@@ -37,9 +37,11 @@ export default function InfoBoardPage() {
     const [open, setOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
-    const { data: announcements, isLoading } = useQuery<Announcement[]>({
+    const { data, isLoading } = useQuery<Announcement[]>({
         queryKey: ["/api/announcements"],
     });
+
+    const announcements = Array.isArray(data) ? data : [];
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

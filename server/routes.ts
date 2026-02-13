@@ -504,11 +504,16 @@ export async function registerRoutes(
 
   app.get(api.announcements.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const list = await storage.getAnnouncements();
-    // Filter expired on the fly or in DB query. Since DB query is simple select *, filter here.
-    const now = new Date();
-    const active = list.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now.getTime());
-    res.json(active);
+    try {
+      const list = await storage.getAnnouncements();
+      // Filter expired on the fly or in DB query. Since DB query is simple select *, filter here.
+      const now = new Date();
+      const active = list.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now.getTime());
+      res.json(active);
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   });
 
   app.post(api.announcements.create.path, upload.single('image'), async (req, res) => {

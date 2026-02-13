@@ -21,9 +21,11 @@ interface Announcement {
 export default function InfoPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
-  const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
+  const { data, isLoading } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
   });
+
+  const announcements = Array.isArray(data) ? data : [];
 
   const handleDownload = async (announcement: Announcement) => {
     if (!announcement.imageUrl) return;
