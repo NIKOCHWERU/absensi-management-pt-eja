@@ -9,6 +9,7 @@ import { Loader2, Calendar, Clock, MapPin, Coffee, LogOut, X, LayoutGrid, Calend
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Attendance } from "@shared/schema";
+import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
 
 export default function RecapPage() {
   const { user } = useAuth();
@@ -58,6 +59,17 @@ export default function RecapPage() {
     permission: filteredData.filter(a => a.status === 'permission').length,
     absent: filteredData.filter(a => a.status === 'absent').length,
   };
+
+  // Pre-calculate daily totals
+  const dailyTotals = new Map<string, number>();
+  filteredData.forEach(row => {
+    const key = format(new Date(row.date), "yyyy-MM-dd");
+    if (!dailyTotals.has(key)) {
+      const dayRecords = filteredData.filter(r => format(new Date(r.date), "yyyy-MM-dd") === key);
+      const { netWorkMins } = calculateDailyTotal(dayRecords);
+      dailyTotals.set(key, netWorkMins);
+    }
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -132,6 +144,16 @@ export default function RecapPage() {
                     {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}
                     {' - '}
                     {record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}
+                    {/* Display Total for Day if first record of day */}
+                    {(() => {
+                      const dateStr = format(new Date(record.date), "yyyy-MM-dd");
+                      const isFirstOfDay = filteredData.find(r => format(new Date(r.date), "yyyy-MM-dd") === dateStr)?.id === record.id;
+                      if (isFirstOfDay) {
+                        const total = dailyTotals.get(dateStr) || 0;
+                        if (total > 0) return <span className="ml-2 font-bold text-gray-700">• Total: {formatDuration(total)}</span>;
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :

@@ -9,7 +9,8 @@ import {
     Trash2,
     Calendar,
     Image as ImageIcon,
-    Loader2
+    Loader2,
+    MessageSquare
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,11 +38,14 @@ export default function InfoBoardPage() {
     const [open, setOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
-    const { data, isLoading } = useQuery<Announcement[]>({
+    const { data: announcements, isLoading } = useQuery<Announcement[]>({
         queryKey: ["/api/announcements"],
     });
 
-    const announcements = Array.isArray(data) ? data : [];
+    const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
+        queryKey: ["/api/admin/complaints/stats"],
+        refetchInterval: 30000,
+    });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

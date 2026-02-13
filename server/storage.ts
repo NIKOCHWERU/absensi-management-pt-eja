@@ -189,6 +189,14 @@ export class DatabaseStorage implements IStorage {
     const [record] = await db.select().from(complaints).where(eq(complaints.id, id));
     return record!;
   }
+
+  async getPendingComplaintsCount(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(complaints)
+      .where(eq(complaints.status, "pending"));
+    return result.count;
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -225,4 +233,5 @@ export interface IStorage {
   getAllComplaints(): Promise<Complaint[]>;
   getComplaintPhotos(complaintId: number): Promise<ComplaintPhoto[]>;
   updateComplaintStatus(id: number, status: string): Promise<Complaint>;
+  getPendingComplaintsCount(): Promise<number>;
 }

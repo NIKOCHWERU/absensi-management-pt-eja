@@ -6,10 +6,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, MessageSquare } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { differenceInMinutes } from "date-fns";
+import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
 
 export default function RecapPage() {
     const [, setLocation] = useLocation();
@@ -23,6 +24,11 @@ export default function RecapPage() {
 
     const { data: allAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
+    });
+
+    const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
+        queryKey: ["/api/admin/complaints/stats"],
+        refetchInterval: 30000,
     });
 
     const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("monthly");
@@ -111,6 +117,21 @@ export default function RecapPage() {
             setSortOrder('asc');
         }
     };
+
+    // Pre-calculate daily totals for fast lookup
+    const dailyTotals = new Map<string, number>();
+    processedData.forEach(row => {
+        const key = `${format(new Date(row.date), "yyyy-MM-dd")}-${row.userId}`;
+        if (!dailyTotals.has(key)) {
+            // Find all records for this day/user
+            const dayRecords = processedData.filter(r =>
+                format(new Date(r.date), "yyyy-MM-dd") === format(new Date(row.date), "yyyy-MM-dd") &&
+                r.userId === row.userId
+            );
+            const { netWorkMins } = calculateDailyTotal(dayRecords);
+            dailyTotals.set(key, netWorkMins);
+        }
+    });
 
     const calculateHours = (start?: Date | string | null, end?: Date | string | null) => {
         if (!start || !end) return 0;
@@ -351,14 +372,17 @@ export default function RecapPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {processedData.map((row, index) => {
-                                        const workMins = calculateHours(row.checkIn, row.checkOut);
-                                        const breakMins = calculateHours(row.breakStart, row.breakEnd);
-                                        const netMins = Math.max(0, workMins - breakMins);
+                                        // Calculate per-session stats
+                                        const { netWorkMins: sessionNetMins, totalBreakMins: sessionBreakMins } = calculateDailyTotal([row]);
 
                                         // Grouping Logic: Check if same as previous row
+                                        const dateStr = format(new Date(row.date), "yyyy-MM-dd");
+                                        const key = `${dateStr}-${row.userId}`;
+                                        const dailyTotalMins = dailyTotals.get(key) || 0;
+
                                         const prevRow = index > 0 ? processedData[index - 1] : null;
                                         const isSameDayAndUser = prevRow &&
-                                            new Date(prevRow.date).getTime() === new Date(row.date).getTime() &&
+                                            format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
                                             prevRow.userId === row.userId;
 
                                         return (
@@ -385,11 +409,18 @@ export default function RecapPage() {
                                                 <td className="px-4 py-3 text-red-600 font-mono">
                                                     {row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}
                                                 </td>
-                                                <td className="px-4 py-3 font-bold text-gray-800">
-                                                    {formatDuration(netMins)}
+                                                <td className="px-4 py-3">
+                                                    {!isSameDayAndUser && (
+                                                        <div className="text-gray-900 font-bold mb-1">
+                                                            Total: {formatDuration(dailyTotalMins)}
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-gray-500">
+                                                        Sesi: {formatDuration(sessionNetMins)}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">
-                                                    {breakMins > 0 ? formatDuration(breakMins) : "-"}
+                                                    {sessionBreakMins > 0 ? formatDuration(sessionBreakMins) : "-"}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold

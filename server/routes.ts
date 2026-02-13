@@ -562,6 +562,19 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Get complaint stats
+  app.get("/api/admin/complaints/stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    try {
+      const count = await storage.getPendingComplaintsCount();
+      res.json({ pendingCount: count });
+    } catch (e) {
+      console.error("Complaint Stats Error:", e);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
   app.delete("/api/announcements/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 

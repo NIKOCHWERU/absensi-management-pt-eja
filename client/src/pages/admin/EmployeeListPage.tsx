@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { ArrowLeft, UserPlus, Search, Calendar, Phone, Image as ImageIcon, ImageOff, MapPin, Trash2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Search, Calendar, Phone, Image as ImageIcon, ImageOff, MapPin, Trash2, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -48,7 +48,12 @@ export default function AdminEmployeeList() {
     const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
     const [weekDate, setWeekDate] = useState(new Date());
 
-    const { data: users } = useQuery<User[]>({
+    const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
+        queryKey: ["/api/admin/complaints/stats"],
+        refetchInterval: 30000,
+    });
+
+    const { data: users = [], isLoading } = useQuery<User[]>({
         queryKey: ["/api/admin/users"],
     });
 
@@ -169,6 +174,15 @@ export default function AdminEmployeeList() {
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <h1 className="text-xl font-bold text-gray-800">Daftar Karyawan</h1>
+                    <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/complaints")}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Pengaduan Karyawan
+                        {complaintsStats && complaintsStats.pendingCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                {complaintsStats.pendingCount}
+                            </span>
+                        )}
+                    </Button>
                 </div>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>

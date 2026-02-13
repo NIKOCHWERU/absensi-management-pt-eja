@@ -24,7 +24,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { format, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 
 export default function AdminDashboard() {
@@ -35,6 +35,35 @@ export default function AdminDashboard() {
     const { data: stats } = useQuery<{ totalEmployees: number; presentToday: number }>({
         queryKey: ["/api/admin/stats"],
     });
+
+    const [prevPendingCount, setPrevPendingCount] = useState<number>(0);
+
+    const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
+        queryKey: ["/api/admin/complaints/stats"],
+        refetchInterval: 30000, // Poll every 30 seconds
+    });
+
+    // Browser Notification Logic
+    useEffect(() => {
+        if (complaintsStats && complaintsStats.pendingCount > prevPendingCount) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Pengaduan Baru", {
+                    body: `Ada ${complaintsStats.pendingCount} pengaduan yang menunggu tanggapan.`,
+                    icon: "/logo_elok_buah.jpg"
+                });
+            }
+            setPrevPendingCount(complaintsStats.pendingCount);
+        } else if (complaintsStats) {
+            setPrevPendingCount(complaintsStats.pendingCount);
+        }
+    }, [complaintsStats?.pendingCount]);
+
+    // Request Permission on mount
+    useEffect(() => {
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+    }, []);
 
     const { data: attendanceHistory } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"], // Fetches all history
@@ -87,6 +116,11 @@ export default function AdminDashboard() {
                     <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/complaints")}>
                         <MessageSquare className="mr-2 h-4 w-4" />
                         Pengaduan Karyawan
+                        {complaintsStats && complaintsStats.pendingCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                {complaintsStats.pendingCount}
+                            </span>
+                        )}
                     </Button>
                     <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left items-start whitespace-normal text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-summary")}>
                         <FileText className="mr-2 h-4 w-4 shrink-0 mt-1" />
