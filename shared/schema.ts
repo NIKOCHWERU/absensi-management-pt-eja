@@ -74,6 +74,12 @@ export const complaintPhotos = mysqlTable("complaint_photos", {
   caption: text("caption"),
 });
 
+export const sessions = mysqlTable("sessions", {
+  id: varchar("session_id", { length: 128 }).primaryKey(),
+  expires: int("expires").notNull(),
+  data: text("data"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   attendanceRecords: many(attendance),
