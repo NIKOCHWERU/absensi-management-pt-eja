@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useAttendance } from "@/hooks/use-attendance";
+import { useMonthlyAttendance } from "@/hooks/use-monthly-attendance";
 import { BottomNav } from "@/components/BottomNav";
 import { AttendanceCalendar } from "@/components/AttendanceCalendar";
 import { useState } from "react";
@@ -20,7 +20,7 @@ export default function RecapPage() {
 
   // Fetch for current display month (format YYYY-MM)
   const monthStr = format(currentDate, 'yyyy-MM');
-  const { data: attendanceData, isLoading } = useAttendance().useMonthlyAttendance(monthStr, user?.id);
+  const { data: attendanceData, isLoading } = useMonthlyAttendance(monthStr, user?.id);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
@@ -135,9 +135,9 @@ export default function RecapPage() {
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                    record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                      record.status === 'absent' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
+                  record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                    record.status === 'absent' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
                   }`}>
                   {record.status === 'present' ? 'Hadir' :
                     record.status === 'late' ? 'Telat' :
@@ -172,9 +172,9 @@ export default function RecapPage() {
                   {format(new Date(selectedRecord.date), 'EEEE, dd MMM yyyy', { locale: id })}
                 </p>
                 <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                    selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                      selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
+                  selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                    selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
                   }`}>
                   {selectedRecord.status === 'present' ? 'Hadir' :
                     selectedRecord.status === 'late' ? 'Telat' :

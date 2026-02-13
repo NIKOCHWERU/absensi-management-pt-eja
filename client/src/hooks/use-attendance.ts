@@ -70,13 +70,7 @@ export function useAttendance() {
     },
   });
 
-  // Helper hook for monthly data
-  const useMonthlyAttendance = (month: string, userId?: number) => {
-    return useQuery<Attendance[]>({
-      queryKey: [`/api/attendance?month=${month}${userId ? `&userId=${userId}` : ''}`],
-      enabled: !!month,
-    });
-  };
+
 
   return {
     todaySessions,
@@ -98,6 +92,5 @@ export function useAttendance() {
       breakEndMutation.isPending ||
       permitMutation.isPending ||
       resumeMutation.isPending,
-    useMonthlyAttendance,
   };
 }
