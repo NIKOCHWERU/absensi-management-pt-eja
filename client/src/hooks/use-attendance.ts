@@ -3,9 +3,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Attendance } from "@shared/schema";
 
 export function useAttendance() {
-  const { data: todaySessions = [], isLoading: isLoadingToday } = useQuery<Attendance[]>({
+  const { data, isLoading: isLoadingToday } = useQuery<Attendance[]>({
     queryKey: ["/api/attendance/today"],
   });
+  const todaySessions = data || [];
 
   // Derive active and completed sessions from array
   const activeSession = todaySessions.find(s => !s.checkOut) || null;
