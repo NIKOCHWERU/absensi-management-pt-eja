@@ -8,7 +8,7 @@ export function useAttendance() {
   });
 
   const clockInMutation = useMutation({
-    mutationFn: async (data: { location: string; checkInPhoto: string }) => {
+    mutationFn: async (data: { location: string; checkInPhoto: string; shift?: string }) => {
       await apiRequest("POST", "/api/attendance/clock-in", data);
     },
     onSuccess: () => {

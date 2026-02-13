@@ -29,6 +29,13 @@ export async function registerRoutes(
   // Setup Auth
   setupAuth(app);
 
+  // Setup uploads directory BEFORE routes that use it
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+  app.use('/uploads', express.static(uploadsDir));
+
   // Helper to handle photo upload
   async function handlePhotoUpload(
     req: Request,
@@ -143,10 +150,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'clockOut');
@@ -166,10 +175,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'breakStart');
@@ -189,10 +200,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'breakEnd');
@@ -459,17 +472,15 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
     const users = await storage.getAllUsers();
-    // Simple stats
     const totalEmployees = users.filter(u => u.role === 'employee').length;
 
-    // Present today
-    const today = new Date().toISOString().split('T')[0];
-    const allAttendance = await storage.getAttendanceHistory(undefined, undefined); // This gets all history, might be heavy. 
-    // Optimization: getAttendanceHistory filters by month, but here we want today.
-    // I should add getAttendanceByDate to storage later or filter here.
-    // Ideally storage.getAttendanceByDate(date).
-    // For now, let's just filter in memory if dataset is small, or use what we have.
-    const todayRecords = allAttendance.filter(a => a.date === today && a.status === 'present');
+    // Present today - use Jakarta timezone for consistency
+    const today = getJakartaDate();
+    const allAttendance = await storage.getAttendanceHistory(undefined, undefined);
+    const todayRecords = allAttendance.filter(a => {
+      const dateStr = typeof a.date === 'string' ? a.date : new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+      return dateStr === today && (a.status === 'present' || a.status === 'late');
+    });
 
     res.json({
       totalEmployees,
@@ -479,13 +490,7 @@ export async function registerRoutes(
 
   // --- Announcement Routes ---
 
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-  }
-
-  // Serve uploads statically
-  app.use('/uploads', express.static(uploadsDir));
+  // uploadsDir already declared and configured at the top of registerRoutes
 
   app.get(api.announcements.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
