@@ -146,14 +146,13 @@ export default function EmployeeDashboard() {
   };
 
   const startAttendanceFlow = async (actionFn: (data: any) => Promise<any>, successTitle: string, requireShift = false) => {
-      // If requireShift is true and we don't have a shift selected yet (and user doesn't have one assigned), ask for it
-      // Actually per prompt, we need to ask every time "sebelum absen... popup pilihan Shift"
-      // But only for CLOCK IN.
-      
+      // For PT ELOK JAYA ABADHI, we only use 'Management' shift.
       if (requireShift) {
-          setIsShiftModalOpen(true);
-          // Store pending action to resume after shift select
-          // We can just use state to track we are in "Clock In" flow
+          const wrappedClockIn = async (data: any) => {
+              return clockIn({ ...data, shift: 'Management' });
+          };
+          setActiveAction({ fn: wrappedClockIn, successTitle, type: 'attendance' });
+          setIsCameraOpen(true);
           return;
       }
 
@@ -161,16 +160,7 @@ export default function EmployeeDashboard() {
       setIsCameraOpen(true);
   };
 
-  const handleShiftSelect = (shift: string) => {
-      if (confirm(`Apakah Anda yakin ingin lanjut sebagai ${shift}?`)) {
-          setSelectedShift(shift);
-          setIsShiftModalOpen(false);
-          const wrappedClockIn = async (data: any) => {
-              return clockIn({ ...data, shift: shift });
-          };
-          startAttendanceFlow(wrappedClockIn, "Berhasil Absen Masuk", false);
-      }
-  };
+  // Removed handleShiftSelect logic as it's now defaulted to Management
 
   const startPermitFlow = () => {
       setPermitOpen(true);
@@ -343,12 +333,28 @@ export default function EmployeeDashboard() {
       }
       if (today?.checkOut) {
           return (
-            <Button
-              disabled
-              className="w-full py-8 text-xl font-bold rounded-2xl shadow-lg bg-gray-200 text-gray-400"
-            >
-              Sesi Hari Ini Selesai
-            </Button>
+            <div className="flex flex-col gap-3 w-full">
+              <Button
+                disabled
+                className="w-full py-8 text-xl font-bold rounded-2xl shadow-lg bg-gray-200 text-gray-400"
+              >
+                Sesi Hari Ini Selesai
+              </Button>
+              <Button
+                onClick={() => {
+                    setAction('clockIn');
+                    setIsCameraOpen(true);
+                }}
+                className="w-full h-14 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold shadow-blue-200 shadow-lg text-lg"
+              >
+                {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                    <>
+                        <Zap className="mr-2 h-5 w-5" />
+                        Lanjut Kerja (Sesi Baru)
+                    </>
+                )}
+              </Button>
+            </div>
           );
       }
 
@@ -421,6 +427,13 @@ export default function EmployeeDashboard() {
       }
   };
 
+  // Fetch location when camera opens
+  useEffect(() => {
+    if (isCameraOpen) {
+      getCoordinates().catch(console.error);
+    }
+  }, [isCameraOpen]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Camera Modal */}
@@ -428,14 +441,10 @@ export default function EmployeeDashboard() {
         open={isCameraOpen}
         onCapture={handlePhotoCaptured} 
         onClose={() => setIsCameraOpen(false)} 
+        locationAddress={locationAddress}
       />
 
-      {/* Shift Selection Modal */}
-      <ShiftModal 
-          open={isShiftModalOpen} 
-          onSelect={handleShiftSelect}
-          onClose={() => setIsShiftModalOpen(false)}
-      />
+      {/* No Shift Selection Modal - Defaulting to Management */}
 
       <CompanyHeader />
 

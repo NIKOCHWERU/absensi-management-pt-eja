@@ -62,7 +62,7 @@ export default function RecapPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-primary pt-10 pb-20 px-6 rounded-b-[2.5rem] shadow-lg mb-[-3rem]">
-        <h1 className="text-2xl font-bold text-white mb-1">Rekap Absensi</h1>
+        <h1 className="text-2xl font-bold text-white mb-1">Rekap Absensi PT ELOK JAYA ABADHI</h1>
         <p className="text-white/80 text-sm">Pantau kehadiran bulanan Anda</p>
       </div>
 

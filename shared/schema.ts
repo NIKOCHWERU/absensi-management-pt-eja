@@ -41,6 +41,7 @@ export const attendance = mysqlTable("attendance", {
   checkOutLocation: text("check_out_location"),
 
   shift: varchar("shift", { length: 50 }), // 'Shift 1', 'Shift 2', 'Shift 3', 'Long Shift'
+  sessionNumber: int("session_number").default(1), // Track multiple sessions per day
   status: mysqlEnum("status", ["present", "late", "sick", "permission", "absent"]).default("absent"),
   notes: text("notes"), // For permission/sick details
   permitExitAt: timestamp("permit_exit_at"), // When they left for permit mid-day

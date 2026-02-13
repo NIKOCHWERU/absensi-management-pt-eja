@@ -4,13 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Camera, RefreshCw, X, Check, SwitchCamera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { drawWatermark } from '@/lib/watermark';
+
 interface CameraModalProps {
   open: boolean;
   onClose: () => void;
   onCapture: (photoData: string) => Promise<void>;
+  locationAddress?: string;
 }
 
-export function CameraModal({ open, onClose, onCapture }: CameraModalProps) {
+export function CameraModal({ open, onClose, onCapture, locationAddress }: CameraModalProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -59,7 +62,7 @@ export function CameraModal({ open, onClose, onCapture }: CameraModalProps) {
     };
   }, [open, facingMode, isSubmitting]);
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current) return;
 
     const canvas = document.createElement("canvas");
@@ -73,6 +76,13 @@ export function CameraModal({ open, onClose, onCapture }: CameraModalProps) {
         ctx.scale(-1, 1);
       }
       ctx.drawImage(videoRef.current, 0, 0);
+      
+      // Reset transform so text/watermark is not mirrored
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      
+      // Apply Watermark
+      await drawWatermark(ctx, canvas.width, canvas.height, locationAddress || "");
+
       const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       setCapturedPhoto(dataUrl);
 

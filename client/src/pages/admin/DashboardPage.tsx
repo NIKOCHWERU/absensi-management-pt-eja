@@ -60,30 +60,33 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar (Simple version for now) */}
       <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-orange-600">Admin Panel</h1>
-          <p className="text-xs text-gray-400">PT ELOK JAYA ABADHI</p>
+        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+          <img src="/logo_elok_buah.jpg" alt="Logo" className="w-12 h-12 object-contain" />
+          <div>
+            <h1 className="text-xl font-bold text-green-600">Admin Panel</h1>
+            <p className="text-xs text-gray-400">PT ELOK JAYA ABADHI</p>
+          </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
-          <Button variant="ghost" className="w-full justify-start text-orange-600 bg-orange-50 font-medium">
+          <Button variant="ghost" className="w-full justify-start text-green-600 bg-green-50 font-medium">
             <CalendarDays className="mr-2 h-4 w-4" />
             Dashboard
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => setLocation("/admin/employees")}>
+          <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/employees")}>
             <Users className="mr-2 h-4 w-4" />
             Daftar Karyawan
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => setLocation("/admin/recap")}>
+          <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/recap")}>
             <Clock className="mr-2 h-4 w-4" />
             Rekap Absensi
           </Button>
-           <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => setLocation("/admin/info-board")}>
+           <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
             <FileText className="mr-2 h-4 w-4" />
             Papan Informasi
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => setLocation("/admin/attendance-summary")}>
-            <FileText className="mr-2 h-4 w-4" />
-            Absensi Karyawan
+          <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left items-start whitespace-normal text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-summary")}>
+            <FileText className="mr-2 h-4 w-4 shrink-0 mt-1" />
+            <span>Absensi Management PT ELOK JAYA ABADHI</span>
           </Button>
         </nav>
         <div className="p-4 border-t border-gray-100">
@@ -116,7 +119,7 @@ export default function AdminDashboard() {
                              <h3 className="text-4xl font-bold text-gray-800">{stats?.totalEmployees || 0}</h3>
                         </div>
                         <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-50 rounded-lg group-hover:scale-110 transition-transform">
-                            <Users className="h-6 w-6 text-orange-500" />
+                            <Users className="h-6 w-6 text-green-500" />
                         </div>
                     </div>
                 </CardContent>
@@ -369,10 +372,10 @@ export default function AdminDashboard() {
                                         <td className="px-4 py-3 text-green-600 font-mono">
                                             {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-orange-600 font-mono">
+                                        <td className="px-4 py-3 text-green-600 font-mono">
                                             {record.breakStart ? format(new Date(record.breakStart), 'HH:mm') : '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-orange-600 font-mono">
+                                        <td className="px-4 py-3 text-green-600 font-mono">
                                             {record.breakEnd ? format(new Date(record.breakEnd), 'HH:mm') : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-red-600 font-mono">

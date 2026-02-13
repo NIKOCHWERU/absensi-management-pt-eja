@@ -18,16 +18,16 @@ async function seed() {
   const hashedPassword = await hashPassword("password123");
 
   // Admin User
-  const admin = await storage.getUserByUsername("admin@company.com");
+  const admin = await storage.getUserByUsername("admin@nh.com");
   if (!admin) {
     await storage.createUser({
-      username: "admin@company.com", // Email for admin
+      username: "admin@nh.com", // Email for admin
       password: hashedPassword,
       fullName: "Admin User",
       role: "admin",
       isAdmin: true,
     });
-    console.log("✅ Admin user created: admin@company.com / password123");
+    console.log("✅ Admin user created: admin@nh.com / password123");
   } else {
     await storage.updateUser(admin.id, { password: hashedPassword });
     console.log("✅ Admin password updated to password123");

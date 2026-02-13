@@ -85,13 +85,21 @@ export default function RecapPage() {
         if (sortField === 'date') {
             const timeA = new Date(a.date).getTime();
             const timeB = new Date(b.date).getTime();
-            return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+            if (timeA !== timeB) return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+            
+            // Secondary sort: Latest session first (DESC) or Earliest (ASC)
+            const checkInA = a.checkIn ? new Date(a.checkIn).getTime() : 0;
+            const checkInB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
+            return sortOrder === 'desc' ? checkInB - checkInA : checkInA - checkInB;
         } else {
             const nameA = getUserName(a.userId).toLowerCase();
             const nameB = getUserName(b.userId).toLowerCase();
             if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
             if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
-            return 0;
+            
+            const timeA = new Date(a.date).getTime();
+            const timeB = new Date(b.date).getTime();
+            return timeB - timeA;
         }
     });
 
@@ -141,11 +149,12 @@ export default function RecapPage() {
                 <td><b>${formatDuration(netMins)}</b></td>
                 <td>${formatDuration(breakMins)}</td>
                 <td>${
-                    row.status === 'present' ? 'Hadir' : 
+                    (row.status === 'present' ? 'Hadir' : 
                     row.status === 'late' ? 'Telat' : 
                     row.status === 'sick' ? 'Sakit' : 
                     row.status === 'permission' ? 'Izin' : 
-                    row.status === 'absent' ? 'Alpha' : row.status
+                    row.status === 'absent' ? 'Alpha' : row.status) +
+                    ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '')
                 }</td>
                 <td>${row.notes || "-"}</td>
             </tr>
@@ -204,7 +213,7 @@ export default function RecapPage() {
                     <div class="logo-section">
                         <div class="logo-placeholder">A</div>
                         <div class="company-info">
-                            <h1>Absensi Pro</h1>
+                            <h1>PT ELOK JAYA ABADHI</h1>
                             <p>Sistem Manajemen Kehadiran Digital</p>
                         </div>
                     </div>
@@ -268,7 +277,7 @@ export default function RecapPage() {
             <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-bold text-gray-800">Rekap Absensi</h1>
+            <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management PT ELOK JAYA ABADHI</h1>
           </div>
               <div className="flex items-center gap-2 bg-white border rounded-md p-1">
                  <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
@@ -342,26 +351,36 @@ export default function RecapPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {processedData.map((row) => {
+                            {processedData.map((row, index) => {
                                 const workMins = calculateHours(row.checkIn, row.checkOut);
                                 const breakMins = calculateHours(row.breakStart, row.breakEnd);
                                 const netMins = Math.max(0, workMins - breakMins);
 
+                                // Grouping Logic: Check if same as previous row
+                                const prevRow = index > 0 ? processedData[index - 1] : null;
+                                const isSameDayAndUser = prevRow && 
+                                    new Date(prevRow.date).getTime() === new Date(row.date).getTime() && 
+                                    prevRow.userId === row.userId;
+
                                 return (
                                     <tr key={row.id} className="hover:bg-gray-50/50">
-                                        <td className="px-4 py-3 text-gray-900 font-medium">
-                                            {format(new Date(row.date), "dd/MM/yyyy")}
+                                        <td className="px-4 py-3 text-gray-900 font-medium relative">
+                                            {isSameDayAndUser ? (
+                                                <div className="absolute left-8 top-0 h-full w-px bg-gray-200"></div> /* Connector */
+                                            ) : (
+                                                format(new Date(row.date), "dd/MM/yyyy")
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-gray-700">
-                                            {getUserName(row.userId)}
+                                            {isSameDayAndUser ? "" : getUserName(row.userId)}
                                         </td>
                                         <td className="px-4 py-3 text-green-600 font-mono">
                                             {row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}
                                         </td>
-                                        <td className="px-4 py-3 text-orange-600 font-mono">
+                                        <td className="px-4 py-3 text-green-600 font-mono">
                                             {row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}
                                         </td>
-                                        <td className="px-4 py-3 text-orange-600 font-mono">
+                                        <td className="px-4 py-3 text-green-600 font-mono">
                                             {row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}
                                         </td>
                                         <td className="px-4 py-3 text-red-600 font-mono">
@@ -385,6 +404,7 @@ export default function RecapPage() {
                                                  row.status === 'sick' ? 'Sakit' : 
                                                  row.status === 'permission' ? 'Izin' : 
                                                  row.status === 'absent' ? 'Alpha' : row.status}
+                                                 {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-gray-500 italic max-w-xs truncate">

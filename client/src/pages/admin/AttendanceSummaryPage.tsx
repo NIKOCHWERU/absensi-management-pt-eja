@@ -275,11 +275,12 @@ export default function AttendanceSummaryPage() {
                         <td><b>${formatDur(netMins)}</b></td>
                         <td>${formatDur(breakMins)}</td>
                         <td>${
-                            row.status === 'present' ? 'Hadir' : 
+                            (row.status === 'present' ? 'Hadir' : 
                             row.status === 'late' ? 'Telat' : 
                             row.status === 'sick' ? 'Sakit' : 
                             row.status === 'permission' ? 'Izin' : 
-                            row.status === 'absent' ? 'Alpha' : row.status
+                            row.status === 'absent' ? 'Alpha' : row.status) +
+                            ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '')
                         }</td>
                         <td>${row.notes || "-"}</td>
                     </tr>
@@ -339,7 +340,7 @@ export default function AttendanceSummaryPage() {
                         <div class="logo-section">
                             <div class="logo-placeholder">A</div>
                             <div class="company-info">
-                                <h1>Absensi Pro</h1>
+                                <h1>PT ELOK JAYA ABADHI</h1>
                                 <p>Sistem Manajemen Kehadiran Digital</p>
                             </div>
                         </div>
@@ -390,7 +391,7 @@ export default function AttendanceSummaryPage() {
             <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-bold text-gray-800">Absensi Karyawan</h1>
+            <h1 className="text-xl font-bold text-gray-800">Absensi Management PT ELOK JAYA ABADHI</h1>
           </div>
           <div className="flex items-center gap-4">
              <div className="relative w-64">
@@ -431,7 +432,7 @@ export default function AttendanceSummaryPage() {
 
        <main className="p-8 flex-1 overflow-auto">
           <Card className="border-none shadow-sm mb-6">
-             <CardContent className="p-4 flex items-center justify-between bg-orange-50/50">
+             <CardContent className="p-4 flex items-center justify-between bg-green-50/50">
                  <div className="flex gap-6 text-sm">
                       <div>
                          <span className="text-gray-500">Periode:</span>
@@ -448,7 +449,7 @@ export default function AttendanceSummaryPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={handleExport}
-                    className="gap-2 text-orange-600 border-orange-200 bg-white hover:bg-orange-50"
+                    className="gap-2 text-green-600 border-green-200 bg-white hover:bg-green-50"
                  >
                       <FileDown className="h-4 w-4" /> Export PDF
                  </Button>

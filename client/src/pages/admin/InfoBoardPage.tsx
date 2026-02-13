@@ -179,7 +179,7 @@ export default function InfoBoardPage() {
 
        <main className="p-8 flex-1 max-w-5xl mx-auto w-full">
             {isLoading ? (
-                <div className="flex justify-center p-10"><Loader2 className="animate-spin text-orange-600" /></div>
+                <div className="flex justify-center p-10"><Loader2 className="animate-spin text-green-600" /></div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {announcements?.map((item) => (
@@ -209,7 +209,7 @@ export default function InfoBoardPage() {
                                     <Calendar className="h-3 w-3" />
                                     {item.createdAt && format(new Date(item.createdAt), "d MMM yyyy", { locale: id })}
                                     {item.expiresAt && (
-                                        <span className="ml-2 text-orange-600 font-medium">
+                                        <span className="ml-2 text-green-600 font-medium">
                                             • Berakhir: {format(new Date(item.expiresAt), "d MMM yyyy", { locale: id })}
                                         </span>
                                     )}

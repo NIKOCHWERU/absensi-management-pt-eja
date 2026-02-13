@@ -47,10 +47,10 @@ export default function LoginPage() {
           <div className="inline-flex p-4 bg-white rounded-2xl shadow-xl shadow-orange-500/10 mb-2">
             <Building2 className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold font-display text-foreground tracking-tight">
-            PT ELOK JAYA ABADHI
+          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl text-gray-900 drop-shadow-sm">
+            Absensi Management
           </h1>
-          <p className="text-muted-foreground font-medium uppercase tracking-wider">Absensi PT ELOK JAYA ABADHI</p>
+          <p className="text-muted-foreground font-medium uppercase tracking-wider">PT ELOK JAYA ABADHI</p>
         </div>
 
         <LoginCard 

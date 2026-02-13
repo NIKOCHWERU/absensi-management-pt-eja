@@ -414,174 +414,176 @@ export default function AdminEmployeeList() {
                                 </div>
                                 
                                 {/* Detailed Inline View - Shows only when a date is selected */}
-                                {selectedDate && (
-                                    <div className="mt-8 space-y-6">
-                                        <h4 className="font-bold text-gray-800 border-b pb-2">
-                                            Detail {format(selectedDate, "EEEE, d MMM yyyy", { locale: id })}
-                                        </h4>
-                                        
-                                        {(() => {
-                                            // Find record for the selected date
-                                            const att = employeeAttendance?.find(a => 
-                                                new Date(a.date).toDateString() === selectedDate.toDateString()
-                                            );
+                                    {selectedDate && (
+                                        <div className="mt-8 space-y-6">
+                                            <h4 className="font-bold text-gray-800 border-b pb-2">
+                                                Detail {format(selectedDate, "EEEE, d MMM yyyy", { locale: id })}
+                                            </h4>
+                                            
+                                            {(() => {
+                                                // Find ALL records for the selected date
+                                                const sessions = employeeAttendance?.filter(a => 
+                                                    new Date(a.date).toDateString() === selectedDate.toDateString()
+                                                ).sort((a,b) => (a as any).sessionNumber - (b as any).sessionNumber) || [];
 
-                                            if (!att) {
-                                                return (
-                                                    <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                        <p className="text-gray-400">Tidak ada data absensi pada tanggal ini.</p>
-                                                    </div>
-                                                );
-                                            }
-
-                                            return (
-                                                <div key={att.id} className="bg-white border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-4">
-                                                    <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
-                                                        <span className="font-bold text-gray-800">Status Absensi</span>
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                                                            att.status === 'present' ? 'bg-green-100 text-green-700' : 
-                                                            att.status === 'late' ? 'bg-red-100 text-red-700' :
-                                                            att.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                            att.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                            'bg-gray-100 text-gray-700'
-                                                        }`}>
-                                                            {att.status === 'present' ? 'Hadir' : 
-                                                             att.status === 'late' ? 'Telat' : 
-                                                             att.status === 'sick' ? 'Sakit' : 
-                                                             att.status === 'permission' ? 'Izin' : 
-                                                             att.status === 'absent' ? 'Alpha' : att.status}
-                                                        </span>
-                                                    </div>
-                                                    <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        {/* Masuk */}
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs font-semibold text-gray-500 text-center">Masuk</p>
-                                                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
-                                                                {att.checkInPhoto ? (
-                                                                    <a 
-                                                                        href={`https://drive.google.com/file/d/${att.checkInPhoto}/view`} 
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="w-full h-full flex items-center justify-center hover:bg-blue-50 transition-colors group"
-                                                                    >
-                                                                        <ImageIcon className="w-12 h-12 text-blue-600 group-hover:scale-110 transition-transform" />
-                                                                    </a>
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                        <ImageOff className="w-12 h-12" />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-center font-mono text-sm font-bold text-green-600">
-                                                                {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
-                                                            </p>
+                                                if (sessions.length === 0) {
+                                                    return (
+                                                        <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                                            <p className="text-gray-400">Tidak ada data absensi pada tanggal ini.</p>
                                                         </div>
+                                                    );
+                                                }
 
-                                                        {/* Mulai Istirahat */}
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs font-semibold text-gray-500 text-center">Mulai Istirahat</p>
-                                                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
-                                                                {att.breakStartPhoto ? (
-                                                                    <a 
-                                                                        href={`https://drive.google.com/file/d/${att.breakStartPhoto}/view`} 
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="w-full h-full flex items-center justify-center hover:bg-orange-50 transition-colors group"
-                                                                    >
-                                                                        <ImageIcon className="w-12 h-12 text-orange-600 group-hover:scale-110 transition-transform" />
-                                                                    </a>
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                        <ImageOff className="w-12 h-12" />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-center font-mono text-sm font-bold text-orange-600">
-                                                                {att.breakStart ? new Date(att.breakStart).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
-                                                            </p>
+                                                return sessions.map((att, index) => (
+                                                    <div key={att.id} className="bg-white border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-4 mb-6">
+                                                        <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
+                                                            <span className="font-bold text-gray-800">
+                                                                Sesi Ke-{ (att as any).sessionNumber || (index + 1) }
+                                                            </span>
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                                                att.status === 'present' ? 'bg-green-100 text-green-700' : 
+                                                                att.status === 'late' ? 'bg-red-100 text-red-700' :
+                                                                att.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                att.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                'bg-gray-100 text-gray-700'
+                                                            }`}>
+                                                                {att.status === 'present' ? 'Hadir' : 
+                                                                 att.status === 'late' ? 'Telat' : 
+                                                                 att.status === 'sick' ? 'Sakit' : 
+                                                                 att.status === 'permission' ? 'Izin' : 
+                                                                 att.status === 'absent' ? 'Alpha' : att.status}
+                                                            </span>
                                                         </div>
-
-                                                        {/* Selesai Istirahat */}
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs font-semibold text-gray-500 text-center">Selesai Istirahat</p>
-                                                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
-                                                                {att.breakEndPhoto ? (
-                                                                    <a 
-                                                                        href={`https://drive.google.com/file/d/${att.breakEndPhoto}/view`} 
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="w-full h-full flex items-center justify-center hover:bg-orange-50 transition-colors group"
-                                                                    >
-                                                                        <ImageIcon className="w-12 h-12 text-orange-600 group-hover:scale-110 transition-transform" />
-                                                                    </a>
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                        <ImageOff className="w-12 h-12" />
-                                                                    </div>
-                                                                )}
+                                                        <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            {/* Masuk */}
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs font-semibold text-gray-500 text-center">Masuk</p>
+                                                                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
+                                                                    {att.checkInPhoto ? (
+                                                                        <a 
+                                                                            href={`https://drive.google.com/file/d/${att.checkInPhoto}/view`} 
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="w-full h-full flex items-center justify-center hover:bg-blue-50 transition-colors group"
+                                                                        >
+                                                                            <ImageIcon className="w-12 h-12 text-blue-600 group-hover:scale-110 transition-transform" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <ImageOff className="w-12 h-12" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-center font-mono text-sm font-bold text-green-600">
+                                                                    {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
+                                                                </p>
                                                             </div>
-                                                            <p className="text-center font-mono text-sm font-bold text-orange-600">
-                                                                {att.breakEnd ? new Date(att.breakEnd).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
-                                                            </p>
+    
+                                                            {/* Mulai Istirahat */}
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs font-semibold text-gray-500 text-center">Mulai Istirahat</p>
+                                                                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
+                                                                    {att.breakStartPhoto ? (
+                                                                        <a 
+                                                                            href={`https://drive.google.com/file/d/${att.breakStartPhoto}/view`} 
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="w-full h-full flex items-center justify-center hover:bg-green-50 transition-colors group"
+                                                                        >
+                                                                            <ImageIcon className="w-12 h-12 text-green-600 group-hover:scale-110 transition-transform" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <ImageOff className="w-12 h-12" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-center font-mono text-sm font-bold text-green-600">
+                                                                    {att.breakStart ? new Date(att.breakStart).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
+                                                                </p>
+                                                            </div>
+    
+                                                            {/* Selesai Istirahat */}
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs font-semibold text-gray-500 text-center">Selesai Istirahat</p>
+                                                                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
+                                                                    {att.breakEndPhoto ? (
+                                                                        <a 
+                                                                            href={`https://drive.google.com/file/d/${att.breakEndPhoto}/view`} 
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="w-full h-full flex items-center justify-center hover:bg-green-50 transition-colors group"
+                                                                        >
+                                                                            <ImageIcon className="w-12 h-12 text-green-600 group-hover:scale-110 transition-transform" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <ImageOff className="w-12 h-12" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-center font-mono text-sm font-bold text-green-600">
+                                                                    {att.breakEnd ? new Date(att.breakEnd).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
+                                                                </p>
+                                                            </div>
+    
+                                                            {/* Pulang */}
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs font-semibold text-gray-500 text-center">Pulang</p>
+                                                                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
+                                                                    {att.checkOutPhoto ? (
+                                                                        <a 
+                                                                            href={`https://drive.google.com/file/d/${att.checkOutPhoto}/view`} 
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="w-full h-full flex items-center justify-center hover:bg-red-50 transition-colors group"
+                                                                        >
+                                                                            <ImageIcon className="w-12 h-12 text-red-600 group-hover:scale-110 transition-transform" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <ImageOff className="w-12 h-12" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-center font-mono text-sm font-bold text-red-600">
+                                                                    {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
+                                                                </p>
+                                                            </div>
                                                         </div>
-
-                                                        {/* Pulang */}
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs font-semibold text-gray-500 text-center">Pulang</p>
-                                                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
-                                                                {att.checkOutPhoto ? (
-                                                                    <a 
-                                                                        href={`https://drive.google.com/file/d/${att.checkOutPhoto}/view`} 
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="w-full h-full flex items-center justify-center hover:bg-red-50 transition-colors group"
-                                                                    >
-                                                                        <ImageIcon className="w-12 h-12 text-red-600 group-hover:scale-110 transition-transform" />
-                                                                    </a>
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                        <ImageOff className="w-12 h-12" />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-center font-mono text-sm font-bold text-red-600">
-                                                                {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : '-'}
-                                                            </p>
+                                                        <div className="px-4 pb-4 text-xs text-gray-500 flex items-center gap-1">
+                                                            📍 {(() => {
+                                                                const loc = att.checkInLocation || 'Lokasi tidak terdeteksi';
+                                                                // Check if it's coordinates (format: lat,lng)
+                                                                if (loc.match(/^-?\d+\.?\d*,-?\d+\.?\d*$/)) {
+                                                                    return (
+                                                                        <a 
+                                                                            href={`https://www.google.com/maps/search/?api=1&query=${loc}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-blue-600 hover:underline flex items-center"
+                                                                        >
+                                                                            {loc} (Lihat di Peta)
+                                                                            <MapPin className="ml-1 h-3 w-3" />
+                                                                        </a>
+                                                                    );
+                                                                }
+                                                                // Otherwise display as address
+                                                                return <span className="line-clamp-2">{loc}</span>;
+                                                            })()}
                                                         </div>
                                                     </div>
-                                                    <div className="px-4 pb-4 text-xs text-gray-500 flex items-center gap-1">
-                                                        📍 {(() => {
-                                                            const loc = att.checkInLocation || 'Lokasi tidak terdeteksi';
-                                                            // Check if it's coordinates (format: lat,lng)
-                                                            if (loc.match(/^-?\d+\.?\d*,-?\d+\.?\d*$/)) {
-                                                                return (
-                                                                    <a 
-                                                                        href={`https://www.google.com/maps/search/?api=1&query=${loc}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="text-blue-600 hover:underline flex items-center"
-                                                                    >
-                                                                        {loc} (Lihat di Peta)
-                                                                        <MapPin className="ml-1 h-3 w-3" />
-                                                                    </a>
-                                                                );
-                                                            }
-                                                            // Otherwise display as address
-                                                            return <span className="line-clamp-2">{loc}</span>;
-                                                        })()}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
-                                )}
-
-                                {/* Default List if no date selected: Last 5 Activities */}
-                                {!selectedDate && (
-                                    <div className="mt-8">
-                                        <h4 className="font-bold text-gray-800 mb-4">Aktivitas Terakhir</h4>
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <table className="w-full text-sm">
+                                                ));
+                                            })()}
+                                        </div>
+                                    )}
+    
+                                    {/* Default List if no date selected: Last 5 Activities */}
+                                    {!selectedDate && (
+                                        <div className="mt-8">
+                                            <h4 className="font-bold text-gray-800 mb-4">Aktivitas Terakhir</h4>
+                                            <div className="border rounded-lg overflow-hidden">
+                                                <table className="w-full text-sm">
                                                 <thead className="bg-gray-50 text-gray-500">
                                                     <tr>
                                                         <th className="px-4 py-2 text-left">Tanggal</th>

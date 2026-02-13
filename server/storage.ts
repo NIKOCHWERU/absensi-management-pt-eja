@@ -86,6 +86,15 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
+  async getAttendanceSessionsByUserAndDate(userId: number, date: string): Promise<Attendance[]> {
+    // Get all sessions for a user on a specific date
+    const records = await db.select()
+      .from(attendance)
+      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`))
+      .orderBy(attendance.sessionNumber);
+    return records;
+  }
+
   async updateAttendance(id: number, updates: Partial<Attendance>): Promise<Attendance> {
     await db.update(attendance)
       .set(updates)
@@ -160,6 +169,7 @@ export interface IStorage {
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   getAttendance(id: number): Promise<Attendance | undefined>;
   getAttendanceByUserAndDate(userId: number, date: string): Promise<Attendance | undefined>;
+  getAttendanceSessionsByUserAndDate(userId: number, date: string): Promise<Attendance[]>;
   updateAttendance(id: number, updates: Partial<Attendance>): Promise<Attendance>;
   getAttendanceHistory(userId?: number, monthStr?: string): Promise<Attendance[]>;
 

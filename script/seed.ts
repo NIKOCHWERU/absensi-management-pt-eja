@@ -41,7 +41,7 @@ async function seed() {
     const existingAdmin2 = await db.select().from(users).where(eq(users.username, admin2Email)).limit(1);
 
     if (existingAdmin2.length === 0) {
-      const hashedPassword2 = await hashPassword("admin");
+      const hashedPassword2 = await hashPassword("password123");
       await db.insert(users).values({
         email: admin2Email,
         username: admin2Email,
@@ -50,11 +50,11 @@ async function seed() {
         role: "admin",
         isAdmin: true,
       });
-      console.log("✅ Admin user created: admin@nh.com / admin");
+      console.log("✅ Admin user created: admin@nh.com / password123");
     } else {
-      const hashedPassword2 = await hashPassword("admin");
+      const hashedPassword2 = await hashPassword("password123");
       await db.update(users).set({ password: hashedPassword2 }).where(eq(users.username, admin2Email));
-      console.log("✅ Admin password updated to 'admin' for admin@nh.com.");
+      console.log("✅ Admin password updated to 'password123' for admin@nh.com.");
     }
 
     // 2. Create Employee User
