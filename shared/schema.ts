@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlEnum, varchar, text, int, boolean, timestamp, date } from "drizzle-orm/mysql-core";
+import { mysqlTable, mysqlEnum, varchar, text, int, boolean, timestamp, date, index } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -46,7 +46,11 @@ export const attendance = mysqlTable("attendance", {
   notes: text("notes"), // For permission/sick details
   permitExitAt: timestamp("permit_exit_at"), // When they left for permit mid-day
   permitResumeAt: timestamp("permit_resume_at"), // When they resumed work
-});
+}, (table) => ({
+  userIdIdx: index("idx_attendance_user_id").on(table.userId),
+  dateIdx: index("idx_attendance_date").on(table.date),
+  userDateIdx: index("idx_attendance_user_date").on(table.userId, table.date),
+}));
 
 export const announcements = mysqlTable("announcements", {
   id: int("id").primaryKey().autoincrement(),
@@ -56,7 +60,9 @@ export const announcements = mysqlTable("announcements", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   authorId: int("author_id"),
-});
+}, (table) => ({
+  createdAtIdx: index("idx_announcements_created_at").on(table.createdAt),
+}));
 
 export const complaints = mysqlTable("complaints", {
   id: int("id").primaryKey().autoincrement(),
@@ -65,7 +71,10 @@ export const complaints = mysqlTable("complaints", {
   description: text("description").notNull(),
   status: mysqlEnum("status", ["pending", "reviewed", "resolved"]).default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_complaints_user_id").on(table.userId),
+  createdAtIdx: index("idx_complaints_created_at").on(table.createdAt),
+}));
 
 export const complaintPhotos = mysqlTable("complaint_photos", {
   id: int("id").primaryKey().autoincrement(),

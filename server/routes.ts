@@ -589,15 +589,16 @@ export async function registerRoutes(
       });
 
       // Handle uploaded photos
-      const multerReq = req as any;
-      const files = multerReq.files || [];
+      const files = (req.files as Express.Multer.File[]) || [];
       const captionList = captions ? (Array.isArray(captions) ? captions : [captions]) : [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const filename = `complaint-${Date.now()}-${i}-${file.originalname}`;
         const filepath = path.join(uploadsDir, filename);
-        fs.writeFileSync(filepath, file.buffer);
+
+        // Use async write to avoid blocking event loop
+        await fs.promises.writeFile(filepath, file.buffer);
         const photoUrl = `/uploads/${filename}`;
 
         await storage.createComplaintPhoto({
@@ -610,7 +611,10 @@ export async function registerRoutes(
       res.status(201).json(complaint);
     } catch (e) {
       console.error("Complaint Create Error:", e);
-      res.status(400).json({ message: "Gagal membuat pengaduan" });
+      // Ensure we return JSON, not HTML, even if something weird happens
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Gagal membuat pengaduan: Server error" });
+      }
     }
   });
 
