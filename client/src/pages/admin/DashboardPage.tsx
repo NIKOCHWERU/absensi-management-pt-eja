@@ -145,7 +145,7 @@ export default function AdminDashboard() {
                 </header>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <Card
                         className="border-none shadow-sm hover:shadow-md transition-all bg-white rounded-xl overflow-hidden group cursor-pointer hover:translate-y-[-2px]"
                         onClick={() => setLocation("/admin/employees")}
@@ -205,6 +205,28 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-gray-400">
                                 <span>Lihat Ringkasan</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card
+                        className="border-none shadow-sm hover:shadow-md transition-all bg-white rounded-xl overflow-hidden group cursor-pointer hover:translate-y-[-2px]"
+                        onClick={() => setLocation("/admin/complaints")}
+                    >
+                        <CardContent className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Pengaduan Baru</p>
+                                    <h3 className="text-4xl font-bold text-orange-600">
+                                        {complaintsStats?.pendingCount || 0}
+                                    </h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-50 rounded-lg group-hover:scale-110 transition-transform">
+                                    <MessageSquare className="h-6 w-6 text-orange-600" />
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 text-xs text-gray-400">
+                                <span>Menunggu Tanggapan</span>
                             </div>
                         </CardContent>
                     </Card>
