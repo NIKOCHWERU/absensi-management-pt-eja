@@ -50,7 +50,7 @@ export default function AdminEmployeeList() {
 
     const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
         queryKey: ["/api/admin/complaints/stats"],
-        refetchInterval: 30000,
+        refetchInterval: 10000,
     });
 
     const { data: users = [], isLoading } = useQuery<User[]>({

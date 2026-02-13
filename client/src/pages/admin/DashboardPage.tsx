@@ -34,13 +34,14 @@ export default function AdminDashboard() {
 
     const { data: stats } = useQuery<{ totalEmployees: number; presentToday: number }>({
         queryKey: ["/api/admin/stats"],
+        refetchInterval: 10000, // Poll every 10 seconds
     });
 
     const [prevPendingCount, setPrevPendingCount] = useState<number>(0);
 
     const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
         queryKey: ["/api/admin/complaints/stats"],
-        refetchInterval: 30000, // Poll every 30 seconds
+        refetchInterval: 10000, // Poll every 10 seconds
     });
 
     // Browser Notification Logic
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
 
     const { data: attendanceHistory } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"], // Fetches all history
+        refetchInterval: 10000, // Poll every 10 seconds
     });
 
     const { data: users } = useQuery<User[]>({

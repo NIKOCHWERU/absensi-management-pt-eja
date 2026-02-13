@@ -28,7 +28,7 @@ export default function RecapPage() {
 
     const { data: complaintsStats } = useQuery<{ pendingCount: number }>({
         queryKey: ["/api/admin/complaints/stats"],
-        refetchInterval: 30000,
+        refetchInterval: 10000,
     });
 
     const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("monthly");
