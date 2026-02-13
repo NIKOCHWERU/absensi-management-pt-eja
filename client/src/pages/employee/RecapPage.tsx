@@ -17,7 +17,7 @@ export default function RecapPage() {
   const [weekDate, setWeekDate] = useState(new Date());
   const [selectedRecord, setSelectedRecord] = useState<Attendance | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Fetch for current display month (format YYYY-MM)
   const monthStr = format(currentDate, 'yyyy-MM');
   const { data: attendanceData, isLoading } = useAttendance().useMonthlyAttendance(monthStr, user?.id);
@@ -42,7 +42,7 @@ export default function RecapPage() {
   // Get filtered data based on view mode
   const filteredData = attendanceData?.filter(record => {
     if (viewMode === 'month') return true; // useMonthlyAttendance already gives 26th-25th
-    
+
     // For week view, filter current month's data by week boundary
     const date = new Date(record.date);
     const wStart = startOfWeek(weekDate, { weekStartsOn: 1 });
@@ -67,7 +67,7 @@ export default function RecapPage() {
       </div>
 
       <main className="px-4 max-w-lg mx-auto space-y-6">
-        
+
         {/* Calendar Card */}
         <div className="relative z-10">
           {isLoading ? (
@@ -75,11 +75,11 @@ export default function RecapPage() {
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           ) : (
-            <AttendanceCalendar 
-              currentDate={currentDate} 
-              onPrevMonth={handlePrev} 
-              onNextMonth={handleNext} 
-              attendanceData={attendanceData || []} 
+            <AttendanceCalendar
+              currentDate={currentDate}
+              onPrevMonth={handlePrev}
+              onNextMonth={handleNext}
+              attendanceData={attendanceData || []}
               onDateSelect={handleDateSelect}
               viewMode={viewMode}
               setViewMode={setViewMode}
@@ -116,32 +116,34 @@ export default function RecapPage() {
           </div>
           <div className="divide-y divide-border">
             {filteredData.map((record) => (
-              <div 
-                key={record.id} 
+              <div
+                key={record.id}
                 className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => handleDateSelect(new Date(record.date), record)}
               >
                 <div>
-                  <div className="font-semibold text-sm">
+                  <div className="font-semibold text-sm flex items-center gap-2">
                     {format(new Date(record.date), 'EEEE, dd MMM yyyy', { locale: id })}
+                    {(record as any).sessionNumber && (record as any).sessionNumber > 1 && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold">Sesi {(record as any).sessionNumber}</span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'} 
+                    {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}
                     {' - '}
                     {record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
-                  record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                  record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                  record.status === 'absent' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
+                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                    record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                      record.status === 'absent' ? 'bg-red-100 text-red-700' :
+                        'bg-blue-100 text-blue-700'
+                  }`}>
                   {record.status === 'present' ? 'Hadir' :
-                   record.status === 'late' ? 'Telat' :
-                   record.status === 'sick' ? 'Sakit' :
-                   record.status === 'permission' ? 'Izin' :
-                   record.status === 'absent' ? 'Alpa' : record.status}
+                    record.status === 'late' ? 'Telat' :
+                      record.status === 'sick' ? 'Sakit' :
+                        record.status === 'permission' ? 'Izin' :
+                          record.status === 'absent' ? 'Alpa' : record.status}
                 </div>
               </div>
             ))}
@@ -162,27 +164,29 @@ export default function RecapPage() {
           <DialogHeader>
             <DialogTitle className="text-center font-bold text-xl">Detail Absensi</DialogTitle>
           </DialogHeader>
-          
+
           {selectedRecord && (
             <div className="space-y-4 py-4">
               <div className="text-center pb-2 border-b">
                 <p className="font-bold text-lg text-primary">
                   {format(new Date(selectedRecord.date), 'EEEE, dd MMM yyyy', { locale: id })}
                 </p>
-                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                  selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                  selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                      selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
+                        'bg-blue-100 text-blue-700'
+                  }`}>
                   {selectedRecord.status === 'present' ? 'Hadir' :
-                   selectedRecord.status === 'late' ? 'Telat' :
-                   selectedRecord.status === 'sick' ? 'Sakit' :
-                   selectedRecord.status === 'permission' ? 'Izin' :
-                   selectedRecord.status === 'absent' ? 'Alpa' : selectedRecord.status}
+                    selectedRecord.status === 'late' ? 'Telat' :
+                      selectedRecord.status === 'sick' ? 'Sakit' :
+                        selectedRecord.status === 'permission' ? 'Izin' :
+                          selectedRecord.status === 'absent' ? 'Alpa' : selectedRecord.status}
                 </span>
+                {(selectedRecord as any).sessionNumber && (
+                  <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">Sesi {(selectedRecord as any).sessionNumber}</span>
+                )}
                 {selectedRecord.shift && (
-                    <p className="text-xs text-muted-foreground mt-2">Shift: <span className="font-bold">{selectedRecord.shift}</span></p>
+                  <p className="text-xs text-muted-foreground mt-2">Shift: <span className="font-bold">{selectedRecord.shift}</span></p>
                 )}
               </div>
 

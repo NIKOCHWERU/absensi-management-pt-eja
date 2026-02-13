@@ -79,7 +79,7 @@ function ShiftModal({
 
 export default function EmployeeDashboard() {
     const { user } = useAuth();
-    const { today, isLoadingToday, clockIn, clockOut, breakStart, breakEnd, permit, resume, isPending } = useAttendance();
+    const { today, activeSession, todaySessions, sessionCount, completedSessions, isLoadingToday, clockIn, clockOut, breakStart, breakEnd, permit, resume, isPending } = useAttendance();
     const { toast } = useToast();
 
     const [permitOpen, setPermitOpen] = useState(false);
@@ -342,15 +342,19 @@ export default function EmployeeDashboard() {
                     </Button>
                     <Button
                         onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)}
+                        disabled={sessionCount >= 5}
                         className="w-full h-14 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold shadow-blue-200 shadow-lg text-lg"
                     >
                         {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
                             <>
                                 <Zap className="mr-2 h-5 w-5" />
-                                Lanjut Kerja (Sesi Baru)
+                                Lanjut Kerja (Sesi {sessionCount + 1}/5)
                             </>
                         )}
                     </Button>
+                    {sessionCount >= 5 && (
+                        <p className="text-center text-xs text-red-500 font-medium">Batas 5 sesi per hari tercapai</p>
+                    )}
                 </div>
             );
         }
@@ -490,6 +494,7 @@ export default function EmployeeDashboard() {
                                 {getStatusText()}
                             </span>
                             {today?.status === 'late' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">TELAT</span>}
+                            {sessionCount > 0 && <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">Sesi {sessionCount}/5</span>}
                         </div>
                         {locationAddress && (
                             <p className="text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1 max-w-[200px] text-center">
@@ -594,6 +599,23 @@ export default function EmployeeDashboard() {
                         <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
                             <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Keterangan:</p>
                             <p className="text-xs text-gray-600 line-clamp-3">{today.notes}</p>
+                        </div>
+                    )}
+
+                    {/* Completed Sessions Summary */}
+                    {completedSessions.length > 0 && (
+                        <div className="mt-3 border-t pt-3 space-y-2">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase">Sesi Selesai</p>
+                            {completedSessions.map((s: any, i: number) => (
+                                <div key={s.id} className="flex justify-between items-center text-xs bg-gray-50 rounded-lg px-3 py-2">
+                                    <span className="font-semibold text-gray-600">Sesi {s.sessionNumber}</span>
+                                    <span className="font-mono text-gray-500">
+                                        {s.checkIn ? format(new Date(s.checkIn), "HH:mm") : "--:--"}
+                                        {" → "}
+                                        {s.checkOut ? format(new Date(s.checkOut), "HH:mm") : "--:--"}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </motion.div>

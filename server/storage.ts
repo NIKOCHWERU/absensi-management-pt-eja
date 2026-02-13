@@ -1,6 +1,7 @@
 import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
-  users, attendance, announcements
+  Complaint, InsertComplaint, ComplaintPhoto, InsertComplaintPhoto,
+  users, attendance, announcements, complaints, complaintPhotos
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
@@ -149,6 +150,45 @@ export class DatabaseStorage implements IStorage {
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
+
+  // Complaints
+  async createComplaint(data: InsertComplaint): Promise<Complaint> {
+    const [result] = await db.insert(complaints).values(data);
+    const id = result.insertId;
+    const [record] = await db.select().from(complaints).where(eq(complaints.id, id));
+    return record!;
+  }
+
+  async createComplaintPhoto(data: InsertComplaintPhoto): Promise<ComplaintPhoto> {
+    const [result] = await db.insert(complaintPhotos).values(data);
+    const id = result.insertId;
+    const [record] = await db.select().from(complaintPhotos).where(eq(complaintPhotos.id, id));
+    return record!;
+  }
+
+  async getComplaintsByUser(userId: number): Promise<Complaint[]> {
+    return await db.select().from(complaints)
+      .where(eq(complaints.userId, userId))
+      .orderBy(desc(complaints.createdAt));
+  }
+
+  async getAllComplaints(): Promise<Complaint[]> {
+    return await db.select().from(complaints)
+      .orderBy(desc(complaints.createdAt));
+  }
+
+  async getComplaintPhotos(complaintId: number): Promise<ComplaintPhoto[]> {
+    return await db.select().from(complaintPhotos)
+      .where(eq(complaintPhotos.complaintId, complaintId));
+  }
+
+  async updateComplaintStatus(id: number, status: string): Promise<Complaint> {
+    await db.update(complaints)
+      .set({ status: status as any })
+      .where(eq(complaints.id, id));
+    const [record] = await db.select().from(complaints).where(eq(complaints.id, id));
+    return record!;
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -177,4 +217,12 @@ export interface IStorage {
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(): Promise<Announcement[]>;
   deleteAnnouncement(id: number): Promise<void>;
+
+  // Complaint methods
+  createComplaint(data: InsertComplaint): Promise<Complaint>;
+  createComplaintPhoto(data: InsertComplaintPhoto): Promise<ComplaintPhoto>;
+  getComplaintsByUser(userId: number): Promise<Complaint[]>;
+  getAllComplaints(): Promise<Complaint[]>;
+  getComplaintPhotos(complaintId: number): Promise<ComplaintPhoto[]>;
+  updateComplaintStatus(id: number, status: string): Promise<Complaint>;
 }

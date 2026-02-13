@@ -85,8 +85,17 @@ export async function registerRoutes(
   // --- Attendance Routes ---
 
   // Helper date function for Jakarta Timezone
+  // Day boundary is 04:00 AM Jakarta — before 04:00 counts as previous day
   function getJakartaDate(): string {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // Returns YYYY-MM-DD
+    const now = new Date();
+    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    if (jakartaTime.getHours() < 4) {
+      jakartaTime.setDate(jakartaTime.getDate() - 1);
+    }
+    const y = jakartaTime.getFullYear();
+    const m = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+    const d = String(jakartaTime.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   // --- Attendance Routes ---
@@ -107,6 +116,10 @@ export async function registerRoutes(
       }
 
       const nextSessionNumber = existingSessions.length + 1;
+
+      if (nextSessionNumber > 5) {
+        return res.status(400).json({ message: "Batas maksimal 5 sesi per hari tercapai." });
+      }
 
       const photoFileId = await handlePhotoUpload(req, 'clockIn');
       const location = req.body.location;
@@ -321,7 +334,7 @@ export async function registerRoutes(
     const today = getJakartaDate();
     const sessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, today);
 
-    // 6 AM Reset Logic: Auto-close yesterday's open sessions
+    // Auto-close logic: if sessions are from before today's 4AM boundary, close them
     if (sessions.length === 0) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -332,22 +345,19 @@ export async function registerRoutes(
       if (openSession) {
         const now = new Date();
         const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-        if (jakartaTime.getHours() >= 6) {
-          // Auto-close yesterday's session at 6 AM
+        if (jakartaTime.getHours() >= 4) {
+          // Auto-close yesterday's session at 04:00 AM
           await storage.updateAttendance(openSession.id, {
-            checkOut: new Date(jakartaTime.setHours(6, 0, 0, 0)),
-            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 06:00)` : "Auto-closed at 06:00"
+            checkOut: new Date(jakartaTime.setHours(4, 0, 0, 0)),
+            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 04:00)` : "Auto-closed at 04:00"
           });
           console.log(`[AutoReset] Closed session ${openSession.sessionNumber} for user ${req.user!.id} from ${yesterdayStr}`);
         }
       }
     }
 
-    // Return active session (not checked out) or latest session
-    const activeSession = sessions.find(s => !s.checkOut);
-    const record = activeSession || sessions[sessions.length - 1];
-
-    res.json(record || null);
+    // Return all sessions for today as array
+    res.json(sessions);
   });
 
   // --- Admin Routes ---
@@ -556,6 +566,82 @@ export async function registerRoutes(
     } catch (e) {
       console.error(e);
       res.sendStatus(500);
+    }
+  });
+
+  // --- Complaint Routes ---
+
+  // Employee: create complaint with photos
+  app.post("/api/complaints", upload.array('photos', 10), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { title, description, captions } = req.body;
+      const complaint = await storage.createComplaint({
+        userId: req.user!.id,
+        title,
+        description,
+      });
+
+      // Handle uploaded photos
+      const multerReq = req as any;
+      const files = multerReq.files || [];
+      const captionList = captions ? (Array.isArray(captions) ? captions : [captions]) : [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const filename = `complaint-${Date.now()}-${i}-${file.originalname}`;
+        const filepath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filepath, file.buffer);
+        const photoUrl = `/uploads/${filename}`;
+
+        await storage.createComplaintPhoto({
+          complaintId: complaint.id,
+          photoUrl,
+          caption: captionList[i] || null,
+        });
+      }
+
+      res.status(201).json(complaint);
+    } catch (e) {
+      console.error("Complaint Create Error:", e);
+      res.status(400).json({ message: "Gagal membuat pengaduan" });
+    }
+  });
+
+  // Employee: get own complaints
+  app.get("/api/complaints", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const list = await storage.getComplaintsByUser(req.user!.id);
+    res.json(list);
+  });
+
+  // Admin: get all complaints
+  app.get("/api/admin/complaints", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const list = await storage.getAllComplaints();
+    res.json(list);
+  });
+
+  // Get complaint photos
+  app.get("/api/complaints/:id/photos", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const photos = await storage.getComplaintPhotos(parseInt(req.params.id));
+    res.json(photos);
+  });
+
+  // Admin: update complaint status
+  app.patch("/api/admin/complaints/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const updated = await storage.updateComplaintStatus(
+        parseInt(req.params.id),
+        req.body.status
+      );
+      res.json(updated);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "Gagal update status" });
     }
   });
 

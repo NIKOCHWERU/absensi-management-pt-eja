@@ -11,13 +11,13 @@ export async function drawWatermark(
     // Height depends on resolution. 
     // For 640x480, height 480. Footer 120px.
     // For HD, taller.
-    const padding = width * 0.03;
-    const footerHeight = Math.max(80, height * 0.15);
+    const padding = width * 0.02;
+    const footerHeight = Math.max(55, height * 0.10);
 
     // Gradient background for better visibility
     const gradient = ctx.createLinearGradient(0, height - footerHeight, 0, height);
-    gradient.addColorStop(0, "rgba(0, 0, 0, 0.3)");
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0.2)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0.7)");
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, height - footerHeight, width, footerHeight);
@@ -35,7 +35,7 @@ export async function drawWatermark(
         let textX = padding;
 
         if (logo.width > 0) {
-            const logoSize = footerHeight * 0.7; // 70% of footer
+            const logoSize = footerHeight * 0.55; // 55% of footer (smaller)
             const logoY = height - footerHeight + (footerHeight - logoSize) / 2;
             const logoAspect = logo.width / logo.height;
             const logoWidth = logoSize * logoAspect;
@@ -49,9 +49,9 @@ export async function drawWatermark(
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
 
-        // Font sizes
-        const fontSizeDate = Math.max(14, height * 0.04);
-        const fontSizeLocation = Math.max(10, height * 0.025);
+        // Font sizes (smaller)
+        const fontSizeDate = Math.max(11, height * 0.028);
+        const fontSizeLocation = Math.max(9, height * 0.02);
 
         const now = new Date();
         const dateStr = format(now, "EEEE, d MMMM yyyy", { locale: id });

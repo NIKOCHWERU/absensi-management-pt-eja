@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CalendarDays, Info } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Info, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function BottomNav() {
@@ -9,6 +9,7 @@ export function BottomNav() {
     { href: "/", label: "Absensi", icon: LayoutDashboard },
     { href: "/recap", label: "Rekap", icon: CalendarDays },
     { href: "/info", label: "Info", icon: Info },
+    { href: "/complaint", label: "Pengaduan", icon: MessageSquare },
   ];
 
   return (
@@ -26,14 +27,12 @@ export function BottomNav() {
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
-                <tab.icon 
-                  className={`w-6 h-6 mb-1 transition-colors duration-200 ${
-                    isActive ? "text-primary stroke-[2.5]" : "text-muted-foreground group-hover:text-primary/70"
-                  }`} 
+                <tab.icon
+                  className={`w-6 h-6 mb-1 transition-colors duration-200 ${isActive ? "text-primary stroke-[2.5]" : "text-muted-foreground group-hover:text-primary/70"
+                    }`}
                 />
-                <span className={`text-[10px] md:text-xs font-medium transition-colors duration-200 ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}>
+                <span className={`text-[10px] md:text-xs font-medium transition-colors duration-200 ${isActive ? "text-primary" : "text-muted-foreground"
+                  }`}>
                   {tab.label}
                 </span>
               </div>

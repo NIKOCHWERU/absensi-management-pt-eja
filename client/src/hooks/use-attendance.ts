@@ -3,9 +3,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Attendance } from "@shared/schema";
 
 export function useAttendance() {
-  const { data: today, isLoading: isLoadingToday } = useQuery<Attendance>({
+  const { data: todaySessions = [], isLoading: isLoadingToday } = useQuery<Attendance[]>({
     queryKey: ["/api/attendance/today"],
   });
+
+  // Derive active and completed sessions from array
+  const activeSession = todaySessions.find(s => !s.checkOut) || null;
+  const completedSessions = todaySessions.filter(s => !!s.checkOut);
+  const sessionCount = todaySessions.length;
 
   const clockInMutation = useMutation({
     mutationFn: async (data: { location: string; checkInPhoto: string; shift?: string }) => {
@@ -74,7 +79,11 @@ export function useAttendance() {
   };
 
   return {
-    today,
+    todaySessions,
+    activeSession,
+    completedSessions,
+    sessionCount,
+    today: activeSession || completedSessions[completedSessions.length - 1] || null, // backward compat
     isLoadingToday,
     clockIn: clockInMutation.mutateAsync,
     clockOut: clockOutMutation.mutateAsync,
