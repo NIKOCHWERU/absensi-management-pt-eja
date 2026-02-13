@@ -129,9 +129,9 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && !isSubmitting && onClose()}>
-      <DialogContent className="p-0 overflow-hidden bg-black border-none max-w-full h-[100dvh] sm:max-w-lg sm:h-[80vh] sm:rounded-3xl flex flex-col">
-        <DialogTitle className="sr-only">Ambil Foto</DialogTitle>
-        <DialogDescription className="sr-only">
+      <DialogContent aria-describedby="camera-modal-desc" aria-labelledby="camera-modal-title" className="p-0 overflow-hidden bg-black border-none max-w-full h-[100dvh] sm:max-w-lg sm:h-[80vh] sm:rounded-3xl flex flex-col">
+        <DialogTitle id="camera-modal-title" className="sr-only">Ambil Foto</DialogTitle>
+        <DialogDescription id="camera-modal-desc" className="sr-only">
           Antarmuka kamera untuk mengambil foto absensi.
         </DialogDescription>
         <div className="relative flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">

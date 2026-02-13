@@ -106,24 +106,29 @@ export async function registerRoutes(
     try {
       const today = getJakartaDate();
       const userId = req.user!.id;
+      console.log(`[ClockIn] User ${userId} attempting clock-in for date ${today}`);
 
       // Check existing sessions for today
       const existingSessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+      console.log(`[ClockIn] Found ${existingSessions.length} existing sessions for user ${userId}`);
+
       const activeSession = existingSessions.find(s => !s.checkOut);
 
       if (activeSession) {
-        return res.status(400).json({ message: "Sesi sebelumnya belum selesai (belum absen pulang)." });
+        console.log(`[ClockIn] Blocked: Active session ${activeSession.id} exists`);
+        return res.status(400).json({ message: `Anda masih status MASUK (Sesi ${activeSession.sessionNumber}). Harap absen PULANG terlebih dahulu.` });
       }
 
       const nextSessionNumber = existingSessions.length + 1;
 
       if (nextSessionNumber > 5) {
-        return res.status(400).json({ message: "Batas maksimal 5 sesi per hari tercapai." });
+        console.log(`[ClockIn] Blocked: Session limit reached (${nextSessionNumber})`);
+        return res.status(400).json({ message: "Batas harian 5 sesi tercapai." });
       }
 
       const photoFileId = await handlePhotoUpload(req, 'clockIn');
       const location = req.body.location;
-      const shift = req.body.shift; // 'Management'
+      const shift = req.body.shift || 'Management'; // Default to Management if missing
 
       // Determine status based on Shift Rules
       const now = new Date();
@@ -136,7 +141,12 @@ export async function registerRoutes(
       let status = "present";
 
       // Simplified Logic: Late if > 07:00 (7 * 60 = 420 minutes)
-      if (timeInMinutes > 420) {
+      // Only for first session maybe? Or all? Let's apply to all for now or logic per shift
+      // If shift 2 (12:00), late is different. 
+      // For now keep simple:
+      if (timeInMinutes > 420 && shift === 'Shift 1') {
+        status = "late";
+      } else if (timeInMinutes > 720 && shift === 'Shift 2') { // 12:00
         status = "late";
       }
 
@@ -151,9 +161,10 @@ export async function registerRoutes(
         sessionNumber: nextSessionNumber
       });
 
+      console.log(`[ClockIn] Success: Created session ${nextSessionNumber} for user ${userId}`);
       res.json(attendance);
     } catch (err) {
-      console.error(err);
+      console.error("[ClockIn] Error:", err);
       res.status(500).json({ message: (err as Error).message || "Internal Server Error" });
     }
   });
