@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { CompanyHeader } from "@/components/CompanyHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Newspaper, Calendar, Download, Share2, ExternalLink } from "lucide-react";
