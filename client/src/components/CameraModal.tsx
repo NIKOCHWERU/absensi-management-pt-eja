@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, RefreshCw, X, Check, SwitchCamera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { useAuth } from "@/hooks/use-auth";
 import { drawWatermark } from '@/lib/watermark';
 
 interface CameraModalProps {
@@ -14,6 +15,7 @@ interface CameraModalProps {
 }
 
 export function CameraModal({ open, onClose, onCapture, locationAddress }: CameraModalProps) {
+  const { user } = useAuth();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -81,7 +83,13 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
       ctx.setTransform(1, 0, 0, 1, 0, 0);
 
       // Apply Watermark
-      await drawWatermark(ctx, canvas.width, canvas.height, locationAddress || "");
+      await drawWatermark(
+        ctx,
+        canvas.width,
+        canvas.height,
+        locationAddress || "",
+        user?.fullName || user?.username || "Karyawan"
+      );
 
       const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       setCapturedPhoto(dataUrl);
