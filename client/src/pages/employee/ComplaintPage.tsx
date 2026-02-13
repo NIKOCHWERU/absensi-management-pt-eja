@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CompanyHeader } from "@/components/CompanyHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -194,6 +194,9 @@ export default function ComplaintPage() {
                 <DialogContent className="rounded-3xl max-w-sm md:max-w-md p-5 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-center text-lg font-bold">Buat Pengaduan</DialogTitle>
+                        <DialogDescription className="text-center text-sm text-muted-foreground">
+                            Isi formulir di bawah ini untuk mengajukan keluhan atau masalah.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <Input
@@ -278,6 +281,9 @@ export default function ComplaintPage() {
                 <DialogContent className="rounded-3xl max-w-sm md:max-w-md p-5 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold">{selectedComplaint?.title}</DialogTitle>
+                        <DialogDescription>
+                            Detail dan status pengaduan Anda.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">

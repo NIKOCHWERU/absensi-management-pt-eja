@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, RefreshCw, X, Check, SwitchCamera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -76,10 +76,10 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
         ctx.scale(-1, 1);
       }
       ctx.drawImage(videoRef.current, 0, 0);
-      
+
       // Reset transform so text/watermark is not mirrored
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      
+
       // Apply Watermark
       await drawWatermark(ctx, canvas.width, canvas.height, locationAddress || "");
 
@@ -122,6 +122,10 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
   return (
     <Dialog open={open} onOpenChange={(val) => !val && !isSubmitting && onClose()}>
       <DialogContent className="p-0 overflow-hidden bg-black border-none max-w-full h-[100dvh] sm:max-w-lg sm:h-[80vh] sm:rounded-3xl flex flex-col">
+        <DialogTitle className="sr-only">Ambil Foto</DialogTitle>
+        <DialogDescription className="sr-only">
+          Antarmuka kamera untuk mengambil foto absensi.
+        </DialogDescription>
         <div className="relative flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">
           {!capturedPhoto ? (
             <>

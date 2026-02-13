@@ -143,6 +143,9 @@ export default function InfoPage() {
             {!selectedAnnouncement?.imageUrl && (
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold">{selectedAnnouncement?.title}</DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Detail informasi pengumuman.
+                </DialogDescription>
               </DialogHeader>
             )}
             <span className="text-[10px] text-gray-400 flex items-center gap-1">

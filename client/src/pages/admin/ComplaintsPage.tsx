@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -168,6 +168,9 @@ export default function AdminComplaintsPage() {
                 <DialogContent className="rounded-3xl max-w-md p-5 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold">{selectedComplaint?.title}</DialogTitle>
+                        <DialogDescription>
+                            Detail dan status pengaduan karyawan.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 flex-wrap">

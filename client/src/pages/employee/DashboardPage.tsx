@@ -4,7 +4,7 @@ import { CompanyHeader } from "@/components/CompanyHeader";
 import { DigitalClock } from "@/components/DigitalClock";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, User, Camera, MapPin, Coffee, LogOut, X, Check, RefreshCw, SwitchCamera, Zap } from "lucide-react";
 import { format } from "date-fns";
@@ -630,6 +630,9 @@ export default function EmployeeDashboard() {
                         <DialogTitle className="text-center text-xl font-bold">
                             {permitType === 'sick' ? 'Form Sakit' : 'Form Izin'}
                         </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-muted-foreground">
+                            Silakan isi form di bawah ini untuk mengajukan {permitType === 'sick' ? 'sakit' : 'izin'}.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-2">
                         <Textarea

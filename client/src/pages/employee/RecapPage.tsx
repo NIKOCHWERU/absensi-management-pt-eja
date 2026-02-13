@@ -6,7 +6,7 @@ import { useState } from "react";
 import { format, subMonths, addMonths, startOfWeek, endOfWeek, isWithinInterval, subWeeks, addWeeks } from "date-fns";
 import { id } from "date-fns/locale";
 import { Loader2, Calendar, Clock, MapPin, Coffee, LogOut, X, LayoutGrid, Calendar as CalendarIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Attendance } from "@shared/schema";
 
@@ -163,6 +163,9 @@ export default function RecapPage() {
         <DialogContent className="rounded-3xl max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle className="text-center font-bold text-xl">Detail Absensi</DialogTitle>
+            <DialogDescription className="text-center text-sm text-muted-foreground">
+              Informasi lengkap kehadiran pada tanggal tersebut.
+            </DialogDescription>
           </DialogHeader>
 
           {selectedRecord && (

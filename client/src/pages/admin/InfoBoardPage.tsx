@@ -117,6 +117,9 @@ export default function InfoBoardPage() {
                     <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Buat Pengumuman Baru</DialogTitle>
+                            <DialogDescription>
+                                Isi formulir di bawah ini untuk menambahkan pengumuman baru.
+                            </DialogDescription>
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">

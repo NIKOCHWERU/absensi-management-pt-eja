@@ -6,7 +6,7 @@ export function useAttendance() {
   const { data, isLoading: isLoadingToday } = useQuery<Attendance[]>({
     queryKey: ["/api/attendance/today"],
   });
-  const todaySessions = data || [];
+  const todaySessions = Array.isArray(data) ? data : (data ? [data] : []);
 
   // Derive active and completed sessions from array
   const activeSession = todaySessions.find(s => !s.checkOut) || null;
