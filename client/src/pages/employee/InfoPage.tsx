@@ -51,6 +51,17 @@ export default function InfoPage() {
     window.open(url, "_blank");
   };
 
+  const safeFormat = (dateStr: string | null | undefined, fmt: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      return format(date, fmt, { locale: idLocale });
+    } catch (e) {
+      return "";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <CompanyHeader />
@@ -110,7 +121,7 @@ export default function InfoPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {ann.createdAt && format(new Date(ann.createdAt), "dd MMM yyyy", { locale: idLocale })}
+                      {safeFormat(ann.createdAt, "dd MMM yyyy")}
                     </span>
                     <span className="text-[10px] text-primary font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
                       Baca Selengkapnya <ExternalLink className="w-3 h-3" />
@@ -152,8 +163,7 @@ export default function InfoPage() {
             )}
             <span className="text-[10px] text-gray-400 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {selectedAnnouncement?.createdAt &&
-                format(new Date(selectedAnnouncement.createdAt), "EEEE, dd MMMM yyyy • HH:mm", { locale: idLocale })}
+              {safeFormat(selectedAnnouncement?.createdAt, "EEEE, dd MMMM yyyy • HH:mm")}
             </span>
             <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
               {selectedAnnouncement?.content}

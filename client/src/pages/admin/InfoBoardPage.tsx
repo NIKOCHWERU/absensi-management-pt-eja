@@ -100,6 +100,17 @@ export default function InfoBoardPage() {
         }
     });
 
+    const safeFormat = (dateStr: string | null | undefined, fmt: string) => {
+        if (!dateStr) return "";
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return "";
+            return format(date, fmt, { locale: id });
+        } catch (e) {
+            return "";
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <header className="bg-white border-b border-gray-200 p-4 px-8 flex items-center justify-between sticky top-0 z-10">
@@ -228,10 +239,10 @@ export default function InfoBoardPage() {
                                     )}
                                     <div className="flex items-center gap-2 text-[10px] text-gray-400 mb-3">
                                         <Calendar className="h-3 w-3" />
-                                        {item.createdAt && format(new Date(item.createdAt), "d MMM yyyy", { locale: id })}
+                                        {safeFormat(item.createdAt, "d MMM yyyy")}
                                         {item.expiresAt && (
                                             <span className="text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
-                                                s/d {format(new Date(item.expiresAt), "d MMM yyyy", { locale: id })}
+                                                s/d {safeFormat(item.expiresAt, "d MMM yyyy")}
                                             </span>
                                         )}
                                     </div>
