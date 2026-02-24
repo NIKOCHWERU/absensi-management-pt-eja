@@ -213,76 +213,12 @@ export default function EmployeeDashboard() {
       }
   };
 
-  // Clock Out Logic for Early Leave Check
+  // Clock Out — simple confirmation with session number
   const handleClockOutClick = () => {
-      // Logic: if current time < shift end time, warn user
-      // We need to know shift end time. 
-      // User prompt says: "jika karyawan pulang sebelum jam nya beri peringatan... dan beri pilihan IZIN"
-      // Since we don't track shift info in 'today' object fully (we just added it to schema), we might need to rely on assumptions or fetch it.
-      // Let's assume standard 8 hours from clockIn or fixed times based on shift name if we can get it.
-      // BUT 'today' object in 'useAttendance' might not have 'shift' field yet on frontend type.
-      // We should check shared/schema.ts updates are reflected in frontend types (Drizzle types are inferred usually).
-      
-      // Let's assume we can access today.shift or infer it.
-      // If we can't get it easily, we will just prompt "Apakah anda yakin pulang sekarang?" -> "Izin Pulang Cepat" or "Pulang Biasa".
-      // But prompt asks specific warning. 
-      
-      // Since I just added 'shift' to schema, 'today' SHOULD have it if I refetched.
-      // Let's check time.
-      
-      const now = new Date();
-      const hour = now.getHours();
-      let isEarly = false;
-      
-      // We need to know the shift of the current attendance.
-      // 'today' is type Attendance.
-      // We can check 'today.shift' (we need to cast or ensure type is updated).
-      // Let's assume 'today' has 'shift' property now.
-      
-      const currentShift = (today as any)?.shift; 
-      
-      if (currentShift === 'Shift 1') {
-          if (hour < 15) isEarly = true; // Ends 15:00
-      } else if (currentShift === 'Shift 2') {
-          if (hour < 20) isEarly = true; // Ends 20:00 (assumed 8h from 12)
-          // Wait, shift 2 entry 12-14. Late >12. 
-          // Use prompt rules? Shift 1 late >7. Shift 2 late >12. Shift 3 late >15.
-          // Let's assume 8h work.
-          // Shift 1: 07-15? Shift 2: 12-20? Shift 3: 15-23? Long: 07-??
-      } else if (currentShift === 'Shift 3') {
-           // Ends 23:00?
-           if (hour < 23) {
-               // But 23 is late night. Check if hour is small (next day) ? 
-               // Complex. Let's just use 23 for today.
-               isEarly = true;
-           }
+      const sessionNum = (today as any)?.sessionNumber || 1;
+      if (confirm(`Ingin selesaikan sesi kerja ke-${sessionNum} hari ini?`)) {
+          startAttendanceFlow(clockOut, "Hati-hati di jalan");
       }
-      // If no shift stored, maybe skip check or warn always.
-
-      if (isEarly) {
-          // Show alert dialog (using a simple browser confirm or better a custom dialog)
-          // Since I can't easily add another complex Dialog in this huge file without risk, I'll use window.confirm? 
-          // No, User wants "pilihan IZIN yang akan membuat keterangan izin".
-          
-          // I'll reuse the Permit Flow for "Early Leave" aka "Izin Pulang"?
-          // "jika karyawan pulang sebelum jam nya... beri pilihan IZIN yang akan membuat keterangan izin, dan foto pulang"
-          
-          // Let's trigger a specialized dialog or reuse permit dialog with type "permission" and prefilled note "Pulang Cepat / Early Leave".
-          
-          // I will use a simple window.confirm to ask "Belum waktunya pulang. Apakah anda ingin Izin Pulang Cepat?" 
-          // If yes -> Open Permit Dialog. 
-          // If no -> Cancel? Or proceed as normal clock out? 
-          // "beri peringatan ... dan beri pilihan" -> usually implies blocking normal flow unless they force it, or guiding them to Izin.
-          
-          if (confirm("Belum waktunya pulang. Apakah Anda ingin mengajukan ISTIRAHAT/IZIN Pulang Cepat? \n\nKlik OK untuk Form Izin.\nKlik Cancel untuk membatalkan.")) {
-               setPermitType('permission');
-               setPermitNote("Pulang Cepat (Early Leave)");
-               setPermitOpen(true);
-          }
-          return;
-      }
-
-      startAttendanceFlow(clockOut, "Hati-hati di jalan");
   };
 
   const isLoading = isPending || processingLocation;
@@ -305,10 +241,12 @@ export default function EmployeeDashboard() {
   };
 
   const handleResumeWork = async () => {
-    if (confirm("Mau lanjut kerja hari ini?")) {
+    const currentSession = (today as any)?.sessionNumber || 1;
+    const nextSession = currentSession + 1;
+    if (confirm(`Mulai sesi kerja ke-${nextSession} hari ini?`)) {
         try {
             await resume();
-            toast({ title: "Selamat Bekerja Kembali", description: "Sesi Anda telah diaktifkan kembali." });
+            toast({ title: `Sesi ke-${nextSession} Dimulai`, description: "Selamat bekerja kembali!" });
         } catch (err: any) {
             handleError(err);
         }
