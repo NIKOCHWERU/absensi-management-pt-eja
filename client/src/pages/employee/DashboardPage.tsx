@@ -29,6 +29,9 @@ function ShiftModal({
             <DialogContent className="rounded-2xl max-w-xs md:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Pilih Shift Kerja</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Pilih shift kerja yang sesuai untuk mulai melakukan absensi.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-1 gap-3">
                     <Button
