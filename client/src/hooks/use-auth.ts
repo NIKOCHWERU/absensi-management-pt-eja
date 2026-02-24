@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { SelectUser } from "@shared/schema";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
+import { User } from "@shared/schema";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -8,8 +8,9 @@ export function useAuth() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: user, error, isLoading } = useQuery<SelectUser | null>({
+  const { data: user, error, isLoading } = useQuery<User | null>({
     queryKey: ["/api/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
   });
 

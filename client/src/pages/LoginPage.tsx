@@ -42,10 +42,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        
+
         <div className="text-center mb-8 space-y-2">
-          <div className="inline-flex p-4 bg-white rounded-2xl shadow-xl shadow-orange-500/10 mb-2">
-            <Building2 className="w-10 h-10 text-primary" />
+          <div className="inline-flex mb-4">
+            <img
+              src="/logo_elok_buah.jpg"
+              alt="Logo PT Elok Jaya Abadhi"
+              className="w-24 h-24 object-contain rounded-2xl shadow-lg bg-white p-2"
+            />
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl text-gray-900 drop-shadow-sm">
             Absensi Management
@@ -53,8 +57,8 @@ export default function LoginPage() {
           <p className="text-muted-foreground font-medium uppercase tracking-wider">PT ELOK JAYA ABADHI</p>
         </div>
 
-        <LoginCard 
-          onSubmit={(v: any) => onSubmit(v)} 
+        <LoginCard
+          onSubmit={(v: any) => onSubmit(v)}
           isLoading={isLoggingIn}
           form={form}
           icon={<User className="w-4 h-4" />}
@@ -62,7 +66,7 @@ export default function LoginPage() {
           showPassword={showPassword}
           setShowPassword={setShowPassword}
         />
-        
+
         <p className="text-center text-xs text-muted-foreground mt-8 opacity-60">
           &copy; {new Date().getFullYear()} PT ELOK JAYA ABADHI. Seluruh hak cipta dilindungi.
         </p>

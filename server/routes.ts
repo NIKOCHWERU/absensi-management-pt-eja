@@ -29,6 +29,13 @@ export async function registerRoutes(
   // Setup Auth
   setupAuth(app);
 
+  // Setup uploads directory BEFORE routes that use it
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+  app.use('/uploads', express.static(uploadsDir));
+
   // Helper to handle photo upload
   async function handlePhotoUpload(
     req: Request,
@@ -78,8 +85,17 @@ export async function registerRoutes(
   // --- Attendance Routes ---
 
   // Helper date function for Jakarta Timezone
+  // Day boundary is 04:00 AM Jakarta — before 04:00 counts as previous day
   function getJakartaDate(): string {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // Returns YYYY-MM-DD
+    const now = new Date();
+    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    if (jakartaTime.getHours() < 4) {
+      jakartaTime.setDate(jakartaTime.getDate() - 1);
+    }
+    const y = jakartaTime.getFullYear();
+    const m = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+    const d = String(jakartaTime.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   // --- Attendance Routes ---
@@ -90,20 +106,29 @@ export async function registerRoutes(
     try {
       const today = getJakartaDate();
       const userId = req.user!.id;
+      console.log(`[ClockIn] User ${userId} attempting clock-in for date ${today}`);
 
       // Check existing sessions for today
       const existingSessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+      console.log(`[ClockIn] Found ${existingSessions.length} existing sessions for user ${userId}`);
+
       const activeSession = existingSessions.find(s => !s.checkOut);
 
       if (activeSession) {
-        return res.status(400).json({ message: "Sesi sebelumnya belum selesai (belum absen pulang)." });
+        console.log(`[ClockIn] Blocked: Active session ${activeSession.id} exists`);
+        return res.status(400).json({ message: `Anda masih status MASUK (Sesi ${activeSession.sessionNumber}). Harap absen PULANG terlebih dahulu.` });
       }
 
       const nextSessionNumber = existingSessions.length + 1;
 
+      if (nextSessionNumber > 5) {
+        console.log(`[ClockIn] Blocked: Session limit reached (${nextSessionNumber})`);
+        return res.status(400).json({ message: "Batas harian 5 sesi tercapai." });
+      }
+
       const photoFileId = await handlePhotoUpload(req, 'clockIn');
       const location = req.body.location;
-      const shift = req.body.shift; // 'Management'
+      const shift = req.body.shift || 'Management'; // Default to Management if missing
 
       // Determine status based on Shift Rules
       const now = new Date();
@@ -116,7 +141,12 @@ export async function registerRoutes(
       let status = "present";
 
       // Simplified Logic: Late if > 07:00 (7 * 60 = 420 minutes)
-      if (timeInMinutes > 420) {
+      // Only for first session maybe? Or all? Let's apply to all for now or logic per shift
+      // If shift 2 (12:00), late is different. 
+      // For now keep simple:
+      if (timeInMinutes > 420 && shift === 'Shift 1') {
+        status = "late";
+      } else if (timeInMinutes > 720 && shift === 'Shift 2') { // 12:00
         status = "late";
       }
 
@@ -131,9 +161,10 @@ export async function registerRoutes(
         sessionNumber: nextSessionNumber
       });
 
+      console.log(`[ClockIn] Success: Created session ${nextSessionNumber} for user ${userId}`);
       res.json(attendance);
     } catch (err) {
-      console.error(err);
+      console.error("[ClockIn] Error:", err);
       res.status(500).json({ message: (err as Error).message || "Internal Server Error" });
     }
   });
@@ -143,10 +174,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'clockOut');
@@ -166,10 +199,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'breakStart');
@@ -189,10 +224,12 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Find the active (not checked out) session for today
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const existing = sessions.find(s => !s.checkOut);
 
     if (!existing) {
-      return res.status(400).json({ message: "No check-in record found for today" });
+      return res.status(400).json({ message: "No active check-in record found for today" });
     }
 
     const photoFileId = await handlePhotoUpload(req, 'breakEnd');
@@ -308,7 +345,7 @@ export async function registerRoutes(
     const today = getJakartaDate();
     const sessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, today);
 
-    // 6 AM Reset Logic: Auto-close yesterday's open sessions
+    // Auto-close logic: if sessions are from before today's 4AM boundary, close them
     if (sessions.length === 0) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -319,22 +356,19 @@ export async function registerRoutes(
       if (openSession) {
         const now = new Date();
         const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-        if (jakartaTime.getHours() >= 6) {
-          // Auto-close yesterday's session at 6 AM
+        if (jakartaTime.getHours() >= 4) {
+          // Auto-close yesterday's session at 04:00 AM
           await storage.updateAttendance(openSession.id, {
-            checkOut: new Date(jakartaTime.setHours(6, 0, 0, 0)),
-            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 06:00)` : "Auto-closed at 06:00"
+            checkOut: new Date(jakartaTime.setHours(4, 0, 0, 0)),
+            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 04:00)` : "Auto-closed at 04:00"
           });
           console.log(`[AutoReset] Closed session ${openSession.sessionNumber} for user ${req.user!.id} from ${yesterdayStr}`);
         }
       }
     }
 
-    // Return active session (not checked out) or latest session
-    const activeSession = sessions.find(s => !s.checkOut);
-    const record = activeSession || sessions[sessions.length - 1];
-
-    res.json(record || null);
+    // Return all sessions for today as array
+    res.json(sessions);
   });
 
   // --- Admin Routes ---
@@ -459,17 +493,15 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
     const users = await storage.getAllUsers();
-    // Simple stats
     const totalEmployees = users.filter(u => u.role === 'employee').length;
 
-    // Present today
-    const today = new Date().toISOString().split('T')[0];
-    const allAttendance = await storage.getAttendanceHistory(undefined, undefined); // This gets all history, might be heavy. 
-    // Optimization: getAttendanceHistory filters by month, but here we want today.
-    // I should add getAttendanceByDate to storage later or filter here.
-    // Ideally storage.getAttendanceByDate(date).
-    // For now, let's just filter in memory if dataset is small, or use what we have.
-    const todayRecords = allAttendance.filter(a => a.date === today && a.status === 'present');
+    // Present today - use Jakarta timezone for consistency
+    const today = getJakartaDate();
+    const allAttendance = await storage.getAttendanceHistory(undefined, undefined);
+    const todayRecords = allAttendance.filter(a => {
+      const dateStr = typeof a.date === 'string' ? a.date : new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+      return dateStr === today && (a.status === 'present' || a.status === 'late');
+    });
 
     res.json({
       totalEmployees,
@@ -479,21 +511,20 @@ export async function registerRoutes(
 
   // --- Announcement Routes ---
 
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-  }
-
-  // Serve uploads statically
-  app.use('/uploads', express.static(uploadsDir));
+  // uploadsDir already declared and configured at the top of registerRoutes
 
   app.get(api.announcements.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const list = await storage.getAnnouncements();
-    // Filter expired on the fly or in DB query. Since DB query is simple select *, filter here.
-    const now = new Date();
-    const active = list.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now.getTime());
-    res.json(active);
+    try {
+      const list = await storage.getAnnouncements();
+      // Filter expired on the fly or in DB query. Since DB query is simple select *, filter here.
+      const now = new Date();
+      const active = list.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now.getTime());
+      res.json(active);
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   });
 
   app.post(api.announcements.create.path, upload.single('image'), async (req, res) => {
@@ -531,6 +562,19 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Get complaint stats
+  app.get("/api/admin/complaints/stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    try {
+      const count = await storage.getPendingComplaintsCount();
+      res.json({ pendingCount: count });
+    } catch (e) {
+      console.error("Complaint Stats Error:", e);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
   app.delete("/api/announcements/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
@@ -551,6 +595,86 @@ export async function registerRoutes(
     } catch (e) {
       console.error(e);
       res.sendStatus(500);
+    }
+  });
+
+  // --- Complaint Routes ---
+
+  // Employee: create complaint with photos
+  app.post("/api/complaints", upload.array('photos', 10), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { title, description, captions } = req.body;
+      const complaint = await storage.createComplaint({
+        userId: req.user!.id,
+        title,
+        description,
+      });
+
+      // Handle uploaded photos
+      const files = (req.files as Express.Multer.File[]) || [];
+      const captionList = captions ? (Array.isArray(captions) ? captions : [captions]) : [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const filename = `complaint-${Date.now()}-${i}-${file.originalname}`;
+        const filepath = path.join(uploadsDir, filename);
+
+        // Use async write to avoid blocking event loop
+        await fs.promises.writeFile(filepath, file.buffer);
+        const photoUrl = `/uploads/${filename}`;
+
+        await storage.createComplaintPhoto({
+          complaintId: complaint.id,
+          photoUrl,
+          caption: captionList[i] || null,
+        });
+      }
+
+      res.status(201).json(complaint);
+    } catch (e) {
+      console.error("Complaint Create Error:", e);
+      // Ensure we return JSON, not HTML, even if something weird happens
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Gagal membuat pengaduan: Server error" });
+      }
+    }
+  });
+
+  // Employee: get own complaints
+  app.get("/api/complaints", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const list = await storage.getComplaintsByUser(req.user!.id);
+    res.json(list);
+  });
+
+  // Admin: get all complaints
+  app.get("/api/admin/complaints", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const list = await storage.getAllComplaints();
+    res.json(list);
+  });
+
+  // Get complaint photos
+  app.get("/api/complaints/:id/photos", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const photos = await storage.getComplaintPhotos(parseInt(req.params.id));
+    res.json(photos);
+  });
+
+  // Admin: update complaint status
+  app.patch("/api/admin/complaints/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const updated = await storage.updateComplaintStatus(
+        parseInt(req.params.id),
+        req.body.status
+      );
+      res.json(updated);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "Gagal update status" });
     }
   });
 

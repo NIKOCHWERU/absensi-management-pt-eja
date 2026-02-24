@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, RefreshCw, X, Check, SwitchCamera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { useAuth } from "@/hooks/use-auth";
 import { drawWatermark } from '@/lib/watermark';
 
 interface CameraModalProps {
@@ -14,6 +15,7 @@ interface CameraModalProps {
 }
 
 export function CameraModal({ open, onClose, onCapture, locationAddress }: CameraModalProps) {
+  const { user } = useAuth();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -76,12 +78,18 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
         ctx.scale(-1, 1);
       }
       ctx.drawImage(videoRef.current, 0, 0);
-      
+
       // Reset transform so text/watermark is not mirrored
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      
+
       // Apply Watermark
-      await drawWatermark(ctx, canvas.width, canvas.height, locationAddress || "");
+      await drawWatermark(
+        ctx,
+        canvas.width,
+        canvas.height,
+        locationAddress || "",
+        user?.fullName || user?.username || "Karyawan"
+      );
 
       const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       setCapturedPhoto(dataUrl);
@@ -121,7 +129,11 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && !isSubmitting && onClose()}>
-      <DialogContent className="p-0 overflow-hidden bg-black border-none max-w-full h-[100dvh] sm:max-w-lg sm:h-[80vh] sm:rounded-3xl flex flex-col">
+      <DialogContent aria-describedby="camera-modal-desc" aria-labelledby="camera-modal-title" className="p-0 overflow-hidden bg-black border-none max-w-full h-[100dvh] sm:max-w-lg sm:h-[80vh] sm:rounded-3xl flex flex-col">
+        <DialogTitle id="camera-modal-title" className="sr-only">Ambil Foto</DialogTitle>
+        <DialogDescription id="camera-modal-desc" className="sr-only">
+          Antarmuka kamera untuk mengambil foto absensi.
+        </DialogDescription>
         <div className="relative flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">
           {!capturedPhoto ? (
             <>

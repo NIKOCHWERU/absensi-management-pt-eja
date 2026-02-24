@@ -15,8 +15,10 @@ import EmployeeInfo from "@/pages/employee/InfoPage";
 import AdminDashboard from "@/pages/admin/DashboardPage";
 import AdminEmployeeList from "@/pages/admin/EmployeeListPage";
 import AttendanceSummaryPage from "@/pages/admin/AttendanceSummaryPage";
-import AdminRecap from "@/pages/admin/RecapPage"; 
+import AdminRecap from "@/pages/admin/RecapPage";
 import InfoBoardPage from "@/pages/admin/InfoBoardPage";
+import AdminComplaints from "@/pages/admin/ComplaintsPage";
+import EmployeeComplaint from "@/pages/employee/ComplaintPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, adminOnly }: { component: React.ComponentType, adminOnly?: boolean }) {
@@ -57,7 +59,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      
+
       {/* Admin Routes */}
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} adminOnly />
@@ -74,6 +76,9 @@ function Router() {
       <Route path="/admin/info-board">
         <ProtectedRoute component={InfoBoardPage} adminOnly />
       </Route>
+      <Route path="/admin/complaints">
+        <ProtectedRoute component={AdminComplaints} adminOnly />
+      </Route>
 
       {/* Employee & Shared Routes */}
       <Route path="/">
@@ -85,7 +90,10 @@ function Router() {
       <Route path="/info">
         <ProtectedRoute component={EmployeeInfo} />
       </Route>
-      
+      <Route path="/complaint">
+        <ProtectedRoute component={EmployeeComplaint} />
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
