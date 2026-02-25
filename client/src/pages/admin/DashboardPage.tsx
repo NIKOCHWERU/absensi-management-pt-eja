@@ -26,6 +26,9 @@ import { format, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { api } from "@shared/routes";
+import { LeaveRequest } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
     const [, setLocation] = useLocation();
