@@ -125,9 +125,6 @@ export default function LeavePage() {
         }
     };
 
-    const totalSelectedDays = dateRange?.from && dateRange?.to
-        ? differenceInDays(dateRange.to, dateRange.from) + 1
-        : 0;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
