@@ -132,22 +132,35 @@ export async function registerRoutes(
 
       // Determine status based on Shift Rules
       const now = new Date();
-      // Using Jakarta Time for calculation
-      const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-      const hour = jakartaTime.getHours();
-      const minute = jakartaTime.getMinutes();
+      // Reliable way to get Jakarta hours and minutes
+      const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Jakarta',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+      });
+      const timeParts = jakartaFormatter.formatToParts(now);
+      const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
+      const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0');
       const timeInMinutes = hour * 60 + minute;
 
       let status = "present";
 
-      // Simplified Logic: Late if > 07:00 (7 * 60 = 420 minutes)
-      // Only for first session maybe? Or all? Let's apply to all for now or logic per shift
-      // If shift 2 (12:00), late is different. 
-      // For now keep simple:
-      if (timeInMinutes > 420 && shift === 'Shift 1') {
-        status = "late";
-      } else if (timeInMinutes > 720 && shift === 'Shift 2') { // 12:00
-        status = "late";
+      /*
+        Rules:
+        Shift 1: Late if > 07:00 (420 minutes)
+        Shift 2: Late if > 12:00 (720 minutes)
+        Shift 3: Late if > 15:00 (900 minutes)
+        Long Shift / Tim Management: Late if > 07:00 (420 minutes)
+      */
+
+      if (shift === 'Shift 2') {
+        if (timeInMinutes > 720) status = "late";
+      } else if (shift === 'Shift 3') {
+        if (timeInMinutes > 900) status = "late";
+      } else {
+        // Default to 07:00 for Shift 1, Tim Management, Long Shift, or unspecified
+        if (timeInMinutes > 420) status = "late";
       }
 
       const attendance = await storage.createAttendance({
@@ -304,12 +317,20 @@ export async function registerRoutes(
     // Create new session with incremented session number
     const nextSessionNumber = existingSessions.length + 1;
     const now = new Date();
-    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const hour = jakartaTime.getHours();
-    const minute = jakartaTime.getMinutes();
+    const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    });
+    const timeParts = jakartaFormatter.formatToParts(now);
+    const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
+    const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0');
     const timeInMinutes = hour * 60 + minute;
 
     let status = "present";
+    const shift = 'Management'; // Default for resume or should we inherit?
+
     if (timeInMinutes > 420) {
       status = "late";
     }
