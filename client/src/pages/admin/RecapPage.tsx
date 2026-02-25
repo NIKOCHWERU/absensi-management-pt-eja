@@ -11,12 +11,15 @@ import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { differenceInMinutes } from "date-fns";
 import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Camera, Image as ImageIcon } from "lucide-react";
 
 export default function RecapPage() {
     const [, setLocation] = useLocation();
     // State for selected period (e.g., Feb 2026 means Jan 26 - Feb 25)
     // We store the "target" month (Feb 2026)
     const [targetDate, setTargetDate] = useState(new Date());
+    const [selectedLateReason, setSelectedLateReason] = useState<Attendance | null>(null);
 
     const { data: users } = useQuery<User[]>({
         queryKey: ["/api/admin/users"],
@@ -437,8 +440,21 @@ export default function RecapPage() {
                                                         {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-gray-500 italic max-w-xs truncate">
-                                                    {row.notes || "-"}
+                                                <td className="px-4 py-3 text-gray-500 italic max-w-xs">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span>{row.notes || "-"}</span>
+                                                        {(row as any).lateReason && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-auto p-0 text-[11px] text-red-600 hover:text-red-700 hover:bg-transparent justify-start font-bold uppercase tracking-tight flex items-center gap-1.5"
+                                                                onClick={() => setSelectedLateReason(row)}
+                                                            >
+                                                                {(row as any).lateReasonPhoto ? <Camera className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}
+                                                                Lihat Alasan Telat
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -456,6 +472,61 @@ export default function RecapPage() {
                     </CardContent>
                 </Card>
             </main>
+
+            <Dialog open={!!selectedLateReason} onOpenChange={(open) => !open && setSelectedLateReason(null)}>
+                <DialogContent className="sm:max-w-md bg-white border-zinc-200 text-zinc-900 rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-red-600 uppercase">Alasan Keterlambatan</DialogTitle>
+                        <DialogDescription className="text-zinc-500">
+                            Detail alasan yang diberikan oleh karyawan saat clock-in terlambat.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedLateReason && (
+                        <div className="space-y-4 mt-2">
+                            <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Karyawan</p>
+                                <p className="font-bold text-zinc-800">{getUserName(selectedLateReason.userId)}</p>
+                                <p className="text-xs text-zinc-500 font-medium">
+                                    {format(new Date(selectedLateReason.checkIn!), "HH:mm")} - {format(new Date(selectedLateReason.date), "dd MMMM yyyy", { locale: id })}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Alasan</p>
+                                <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 min-h-[80px]">
+                                    <p className="text-sm text-zinc-700 leading-relaxed">{(selectedLateReason as any).lateReason}</p>
+                                </div>
+                            </div>
+                            {(selectedLateReason as any).lateReasonPhoto && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Foto</p>
+                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                        <img
+                                            src={`/uploads/${(selectedLateReason as any).lateReasonPhoto}`}
+                                            alt="Bukti Telat"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                // If it's a base64 string from a failed upload or recent submission
+                                                const target = e.target as HTMLImageElement;
+                                                if (!target.src.includes('base64') && (selectedLateReason as any).lateReasonPhoto.length > 100) {
+                                                    target.src = (selectedLateReason as any).lateReasonPhoto;
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div className="pt-4">
+                        <Button
+                            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl h-12"
+                            onClick={() => setSelectedLateReason(null)}
+                        >
+                            Tutup
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

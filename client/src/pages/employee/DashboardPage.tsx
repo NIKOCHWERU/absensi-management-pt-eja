@@ -106,6 +106,7 @@ export default function EmployeeDashboard() {
 
     const [locationAddress, setLocationAddress] = useState<string>("");
     const [processingLocation, setProcessingLocation] = useState(false);
+    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
     // ... (Keep existing getCoordinates logic)
     const getCoordinates = async (): Promise<{ lat: number, lng: number, address: string }> => {
@@ -647,6 +648,34 @@ export default function EmployeeDashboard() {
                         </div>
                     )}
 
+                    {(today as any)?.lateReason && (
+                        <div className="mt-2 p-3 bg-red-50 rounded-xl border border-red-100/50">
+                            <p className="text-[10px] text-red-500 font-bold uppercase mb-1">Alasan Terlambat:</p>
+                            <p className="text-xs text-red-800 font-medium italic">"{(today as any).lateReason}"</p>
+                            {(today as any).lateReasonPhoto && (
+                                <div
+                                    className="mt-2 aspect-video rounded-xl overflow-hidden border border-red-200 cursor-pointer relative group"
+                                    onClick={() => setSelectedPhoto(`/uploads/${(today as any).lateReasonPhoto}`)}
+                                >
+                                    <img
+                                        src={`/uploads/${(today as any).lateReasonPhoto}`}
+                                        alt="Bukti Telat"
+                                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (!target.src.includes('base64') && (today as any).lateReasonPhoto.length > 100) {
+                                                target.src = (today as any).lateReasonPhoto;
+                                            }
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera className="text-white h-6 w-6" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Completed Sessions Summary */}
                     {completedSessions.length > 0 && (
                         <div className="mt-3 border-t pt-3 space-y-2">
@@ -665,6 +694,37 @@ export default function EmployeeDashboard() {
                     )}
                 </motion.div>
             </main>
+
+            {/* Photo Viewer Dialog */}
+            <Dialog open={!!selectedPhoto} onOpenChange={(val) => !val && setSelectedPhoto(null)}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border-none bg-black">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Lihat Foto</DialogTitle>
+                        <DialogDescription>Tampilan detail foto bukti.</DialogDescription>
+                    </DialogHeader>
+                    <div className="relative aspect-[3/4] sm:aspect-square flex items-center justify-center">
+                        <img
+                            src={selectedPhoto || ""}
+                            alt="Bukti"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (selectedPhoto && !selectedPhoto.includes('base64') && selectedPhoto.length > 100) {
+                                    target.src = selectedPhoto;
+                                }
+                            }}
+                        />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-4 right-4 rounded-full bg-black/50 text-white hover:bg-black/70 backdrop-blur-md"
+                            onClick={() => setSelectedPhoto(null)}
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <BottomNav />
 

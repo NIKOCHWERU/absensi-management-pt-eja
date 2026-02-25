@@ -134,14 +134,42 @@ export function LateReasonModal({ isOpen, onClose, onSubmit }: LateReasonModalPr
                                         <Camera className="h-7 w-7 text-zinc-300" />
                                     </div>
                                     <p className="text-[11px] text-zinc-400 font-medium">Opsional: Lampirkan bukti foto jika diperlukan</p>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="border-zinc-200 hover:bg-zinc-100 rounded-xl px-6 font-semibold"
-                                        onClick={startCamera}
-                                    >
-                                        Buka Kamera
-                                    </Button>
+                                    <div className="flex gap-3">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-zinc-200 hover:bg-zinc-100 rounded-xl px-6 font-semibold gap-2"
+                                            onClick={startCamera}
+                                        >
+                                            <Camera className="h-4 w-4" />
+                                            Buka Kamera
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-zinc-200 hover:bg-zinc-100 rounded-xl px-6 font-semibold gap-2"
+                                            onClick={() => document.getElementById('gallery-upload')?.click()}
+                                        >
+                                            <RefreshCw className="h-4 w-4" />
+                                            Pilih Galeri
+                                        </Button>
+                                        <input
+                                            id="gallery-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setCapturedPhoto(reader.result as string);
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>
