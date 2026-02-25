@@ -66,6 +66,18 @@ export default function AdminDashboard() {
         }
     }, []);
 
+    const requestNotificationPermission = async () => {
+        if ("Notification" in window) {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                toast({
+                    title: "Notifikasi Aktif",
+                    description: "Anda akan menerima pemberitahuan saat ada pengaduan baru.",
+                });
+            }
+        }
+    };
+
     const { data: attendanceHistory } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"], // Fetches all history
         refetchInterval: 10000, // Poll every 10 seconds
@@ -98,37 +110,53 @@ export default function AdminDashboard() {
                         <p className="text-xs text-gray-400">PT ELOK JAYA ABADHI</p>
                     </div>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    <Button variant="ghost" className="w-full justify-start text-green-600 bg-green-50 font-medium">
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        Dashboard
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/employees")}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Daftar Karyawan
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/recap")}>
-                        <Clock className="mr-2 h-4 w-4" />
-                        Rekap Absensi
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Papan Informasi
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/complaints")}>
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Pengaduan Karyawan
-                        {complaintsStats && complaintsStats.pendingCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                                {complaintsStats.pendingCount}
-                            </span>
-                        )}
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left items-start whitespace-normal text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-summary")}>
-                        <FileText className="mr-2 h-4 w-4 shrink-0 mt-1" />
-                        <span>Absensi Management PT ELOK JAYA ABADHI</span>
-                    </Button>
-                </nav>
+
+                <div className="flex-1 overflow-y-auto">
+                    {("Notification" in window && Notification.permission === "default") && (
+                        <div className="m-4 p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                            <p className="text-[10px] font-bold text-orange-700 uppercase mb-2">Notifikasi Desktop:</p>
+                            <p className="text-[11px] text-orange-600 mb-3">Aktifkan untuk menerima info pengaduan baru secara real-time.</p>
+                            <Button
+                                size="sm"
+                                className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-[10px] h-8 font-bold"
+                                onClick={requestNotificationPermission}
+                            >
+                                Aktifkan Sekarang
+                            </Button>
+                        </div>
+                    )}
+                    <nav className="p-4 space-y-2">
+                        <Button variant="ghost" className="w-full justify-start text-green-600 bg-green-50 font-medium">
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Dashboard
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/employees")}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Daftar Karyawan
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/recap")}>
+                            <Clock className="mr-2 h-4 w-4" />
+                            Rekap Absensi
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Papan Informasi
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/complaints")}>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Pengaduan Karyawan
+                            {complaintsStats && complaintsStats.pendingCount > 0 && (
+                                <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                    {complaintsStats.pendingCount}
+                                </span>
+                            )}
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left items-start whitespace-normal text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-summary")}>
+                            <FileText className="mr-2 h-4 w-4 shrink-0 mt-1" />
+                            <span>Absensi Management PT ELOK JAYA ABADHI</span>
+                        </Button>
+                    </nav>
+                </div>
                 <div className="p-4 border-t border-gray-100">
                     <Button variant="outline" className="w-full text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => logout()}>
                         <LogOut className="mr-2 h-4 w-4" />

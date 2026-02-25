@@ -43,43 +43,56 @@ export async function registerRoutes(
   ): Promise<string | undefined> {
     console.log(`[handlePhotoUpload] Action: ${actionType}, Method: ${req.file ? 'Multipart' : 'Base64'}`);
 
+    const fileName = `attendance-${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const localFilePath = path.join(uploadsDir, fileName);
+
+    let buffer: Buffer;
+    let mimeType: string;
+
     if (req.file) {
-      // Multipart upload
-      const result = await uploadFile(
-        req.file.buffer,
-        `attendance-${Date.now()}-${req.file.originalname}`,
-        req.file.mimetype,
-        {
-          employeeName: (req.user as DbUser).fullName,
-          actionType: actionType,
-          timestamp: new Date()
-        }
-      );
-      console.log(`[handlePhotoUpload] Multipart upload success: ${result.fileId}`);
-      return result.fileId;
+      buffer = req.file.buffer;
+      mimeType = req.file.mimetype;
     } else if (req.body.checkInPhoto && req.body.checkInPhoto.startsWith('data:image')) {
-      console.log(`[handlePhotoUpload] Base64 data length: ${req.body.checkInPhoto.length}`);
-      // Base64 upload
       const matches = req.body.checkInPhoto.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
-        const type = matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
-        const result = await uploadFile(
-          buffer,
-          `attendance-${Date.now()}.png`,
-          type,
-          {
-            employeeName: (req.user as DbUser).fullName,
-            actionType: actionType,
-            timestamp: new Date()
-          }
-        );
-        console.log(`[handlePhotoUpload] Base64 upload success: ${result.fileId}`);
-        return result.fileId;
+        mimeType = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        console.warn(`[handlePhotoUpload] Invalid base64 photo data for ${actionType}`);
+        return undefined;
       }
+    } else {
+      console.warn(`[handlePhotoUpload] No photo data found in request payload for ${actionType}`);
+      return undefined;
     }
-    console.warn(`[handlePhotoUpload] No photo data found in request payload for ${actionType}`);
-    return undefined;
+
+    // 1. Save locally IMMEDIATELY (Fast)
+    try {
+      fs.writeFileSync(localFilePath, buffer);
+      console.log(`[handlePhotoUpload] Saved locally: ${fileName}`);
+
+      // 2. Trigger GDrive upload in background (Don't await it!)
+      // This is what makes it "instant" for the user.
+      uploadFile(
+        buffer,
+        fileName,
+        mimeType,
+        {
+          employeeName: (req.user as DbUser).fullName,
+          actionType: actionType as any,
+          timestamp: new Date()
+        }
+      ).catch(err => {
+        console.error(`[handlePhotoUpload] Background GDrive upload failed for ${fileName}:`, err.message);
+      });
+
+      // 3. Return the local reference immediately
+      return fileName;
+    } catch (err: any) {
+      console.error(`[handlePhotoUpload] Local write failed:`, err.message);
+      return undefined;
+    }
   }
 
   // --- Attendance Routes ---
@@ -482,6 +495,44 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Delete User Error:", err);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.post(api.admin.attendance.manual.path, async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    try {
+      const { userId, date, status, notes, shift } = req.body;
+      if (!userId || !date || !status) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Check if record exists for this user and date
+      // getAttendanceByUserAndDate uses sql`DATE(date)` so it's robust
+      const existing = await storage.getAttendanceByUserAndDate(userId, date);
+
+      let record;
+      if (existing) {
+        record = await storage.updateAttendance(existing.id, {
+          status,
+          notes,
+          shift: shift || existing.shift
+        });
+      } else {
+        record = await storage.createAttendance({
+          userId,
+          date: new Date(date),
+          status,
+          notes: notes || "",
+          shift: shift || 'Management',
+          sessionNumber: 1
+        });
+      }
+
+      res.json(record);
+    } catch (err: any) {
+      console.error("Manual Attendance Error:", err);
+      res.status(500).json({ message: "Gagal memproses data absensi" });
     }
   });
 

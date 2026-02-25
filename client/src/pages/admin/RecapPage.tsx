@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { format, subMonths, addMonths, isSameMonth, setDate, isAfter, isBefore, isEqual, startOfWeek, endOfWeek, startOfDay, endOfDay, subDays, addDays } from "date-fns";
 import { id } from "date-fns/locale";
@@ -6,20 +6,38 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, MessageSquare, Plus, Edit2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { differenceInMinutes } from "date-fns";
 import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Image as ImageIcon } from "lucide-react";
+import { api } from "@shared/routes";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function RecapPage() {
     const [, setLocation] = useLocation();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+
     // State for selected period (e.g., Feb 2026 means Jan 26 - Feb 25)
     // We store the "target" month (Feb 2026)
     const [targetDate, setTargetDate] = useState(new Date());
     const [selectedLateReason, setSelectedLateReason] = useState<Attendance | null>(null);
+
+    // Manual Attendance Modal State
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+    const [editingAttendance, setEditingAttendance] = useState<Partial<Attendance> | null>(null);
+    const [manualEntry, setManualEntry] = useState({
+        userId: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+        status: "present",
+        notes: "",
+        shift: "Management"
+    });
 
     const { data: users } = useQuery<User[]>({
         queryKey: ["/api/admin/users"],
@@ -139,6 +157,57 @@ export default function RecapPage() {
     const calculateHours = (start?: Date | string | null, end?: Date | string | null) => {
         if (!start || !end) return 0;
         return differenceInMinutes(new Date(end), new Date(start));
+    };
+
+    const manualMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const res = await fetch(api.admin.attendance.manual.path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error("Gagal menyimpan data");
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+            setIsManualModalOpen(false);
+            setEditingAttendance(null);
+            toast({
+                title: "Berhasil",
+                description: "Data absensi telah diperbarui.",
+            });
+        },
+        onError: (err: any) => {
+            toast({
+                title: "Gagal",
+                description: err.message,
+                variant: "destructive",
+            });
+        }
+    });
+
+    const handleOpenManualModal = (existing?: Attendance) => {
+        if (existing) {
+            setEditingAttendance(existing);
+            setManualEntry({
+                userId: String(existing.userId),
+                date: format(new Date(existing.date), "yyyy-MM-dd"),
+                status: existing.status || "present",
+                notes: existing.notes || "",
+                shift: existing.shift || "Management"
+            });
+        } else {
+            setEditingAttendance(null);
+            setManualEntry({
+                userId: "",
+                date: format(new Date(), "yyyy-MM-dd"),
+                status: "present",
+                notes: "",
+                shift: "Management"
+            });
+        }
+        setIsManualModalOpen(true);
     };
 
     const formatDuration = (minutes: number) => {
@@ -347,6 +416,9 @@ export default function RecapPage() {
                                     onChange={(e) => setSearchName(e.target.value)}
                                 />
                             </div>
+                            <Button variant="outline" className="gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100" onClick={() => handleOpenManualModal()}>
+                                <Plus className="h-4 w-4" /> Input Manual
+                            </Button>
                             <Button variant="outline" className="gap-2" onClick={handleExport}>
                                 <FileDown className="h-4 w-4" /> Export
                             </Button>
@@ -428,21 +500,33 @@ export default function RecapPage() {
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold
                                                 ${row.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                            row.status === 'late' ? 'bg-red-100 text-red-700' :
+                                                            row.status === 'late' ? 'bg-orange-100 text-orange-700' :
                                                                 row.status === 'sick' ? 'bg-blue-100 text-blue-700' :
                                                                     row.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                        'bg-gray-100 text-gray-700'}`}>
+                                                                        row.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                            'bg-gray-100 text-gray-700'}`}>
                                                         {row.status === 'present' ? 'Hadir' :
                                                             row.status === 'late' ? 'Telat' :
                                                                 row.status === 'sick' ? 'Sakit' :
                                                                     row.status === 'permission' ? 'Izin' :
-                                                                        row.status === 'absent' ? 'Alpha' : row.status}
+                                                                        row.status === 'cuti' ? 'Cuti' :
+                                                                            row.status === 'absent' ? 'Alpha' : row.status}
                                                         {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-500 italic max-w-xs">
                                                     <div className="flex flex-col gap-1">
-                                                        <span>{row.notes || "-"}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{row.notes || "-"}</span>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-gray-400 hover:text-green-600"
+                                                                onClick={() => handleOpenManualModal(row)}
+                                                            >
+                                                                <Edit2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
                                                         {(row as any).lateReason && (
                                                             <Button
                                                                 variant="ghost"
@@ -523,6 +607,116 @@ export default function RecapPage() {
                             onClick={() => setSelectedLateReason(null)}
                         >
                             Tutup
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
+                <DialogContent className="sm:max-w-[425px] bg-white rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-gray-900">
+                            {editingAttendance ? "Edit Data Absensi" : "Input Absensi Manual"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Gunakan ini untuk koreksi data atau input jika karyawan cuti/tidak absen.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Pilih Karyawan</Label>
+                            <Select
+                                value={manualEntry.userId}
+                                onValueChange={(v) => setManualEntry(prev => ({ ...prev, userId: v }))}
+                                disabled={!!editingAttendance}
+                            >
+                                <SelectTrigger className="rounded-xl border-gray-200 h-10">
+                                    <SelectValue placeholder="Pilih karyawan..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {users?.filter(u => u.role === 'employee').map(u => (
+                                        <SelectItem key={u.id} value={String(u.id)}>{u.fullName} ({u.nik || "Tidak ada NIK"})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Tanggal</Label>
+                                <Input
+                                    type="date"
+                                    value={manualEntry.date}
+                                    onChange={(e) => setManualEntry(prev => ({ ...prev, date: e.target.value }))}
+                                    className="rounded-xl border-gray-200"
+                                    disabled={!!editingAttendance}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Shift</Label>
+                                <Select
+                                    value={manualEntry.shift}
+                                    onValueChange={(v) => setManualEntry(prev => ({ ...prev, shift: v }))}
+                                >
+                                    <SelectTrigger className="rounded-xl border-gray-200">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Management">Management</SelectItem>
+                                        <SelectItem value="Office">Office</SelectItem>
+                                        <SelectItem value="Security">Security</SelectItem>
+                                        <SelectItem value="Warehouse">Warehouse</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Status Kehadiran</Label>
+                            <Select
+                                value={manualEntry.status}
+                                onValueChange={(v) => setManualEntry(prev => ({ ...prev, status: v }))}
+                            >
+                                <SelectTrigger className="rounded-xl border-gray-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="present">Hadir</SelectItem>
+                                    <SelectItem value="late">Telat</SelectItem>
+                                    <SelectItem value="sick">Sakit</SelectItem>
+                                    <SelectItem value="permission">Izin</SelectItem>
+                                    <SelectItem value="cuti">Cuti</SelectItem>
+                                    <SelectItem value="absent">Alpha</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Keterangan (Notes)</Label>
+                            <Textarea
+                                placeholder="Masukkan alasan atau catatan..."
+                                value={manualEntry.notes}
+                                onChange={(e) => setManualEntry(prev => ({ ...prev, notes: e.target.value }))}
+                                className="rounded-xl border-gray-200 resize-none h-24"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setIsManualModalOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 font-bold"
+                            onClick={() => {
+                                if (!manualEntry.userId) return toast({ title: "Error", description: "Pilih karyawan terlebih dahulu", variant: "destructive" });
+                                manualMutation.mutate({
+                                    ...manualEntry,
+                                    userId: parseInt(manualEntry.userId)
+                                });
+                            }}
+                            disabled={manualMutation.isPending}
+                        >
+                            {manualMutation.isPending ? "Menyimpan..." : "Simpan Data"}
                         </Button>
                     </div>
                 </DialogContent>

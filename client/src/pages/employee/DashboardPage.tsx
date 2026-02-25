@@ -114,6 +114,18 @@ export default function EmployeeDashboard() {
             throw new Error("Geolocation is not supported by your browser");
         }
 
+        // Inform user before potential browser prompt
+        if ((navigator as any).permissions) {
+            (navigator as any).permissions.query({ name: 'geolocation' }).then((result: any) => {
+                if (result.state === 'prompt') {
+                    toast({
+                        title: "Izin Lokasi Diperlukan",
+                        description: "Mohon izinkan akses lokasi pada browser Anda untuk verifikasi absensi.",
+                    });
+                }
+            });
+        }
+
         setProcessingLocation(true);
         try {
             const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -467,7 +479,11 @@ export default function EmployeeDashboard() {
         }
     };
 
-    // Fetch location when camera opens
+    // Fetch location when camera opens or on mount per user request
+    useEffect(() => {
+        getCoordinates().catch(console.error);
+    }, []);
+
     useEffect(() => {
         if (isCameraOpen) {
             getCoordinates().catch(console.error);

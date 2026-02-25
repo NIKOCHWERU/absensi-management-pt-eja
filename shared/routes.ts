@@ -184,6 +184,24 @@ export const api = {
         },
       },
     },
+    attendance: {
+      manual: {
+        method: 'POST' as const,
+        path: '/api/admin/attendance/manual',
+        input: z.object({
+          userId: z.number(),
+          date: z.string(), // YYYY-MM-DD
+          status: z.enum(['present', 'late', 'sick', 'permission', 'cuti', 'absent']),
+          notes: z.string().optional(),
+          shift: z.string().optional(),
+        }),
+        responses: {
+          200: z.custom<typeof attendance.$inferSelect>(),
+          400: errorSchemas.validation,
+          401: errorSchemas.unauthorized,
+        },
+      },
+    },
   },
 };
 
