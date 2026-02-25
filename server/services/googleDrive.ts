@@ -51,7 +51,7 @@ export async function uploadFile(
     mimeType: string,
     metadata?: {
         employeeName?: string;
-        actionType?: 'clockIn' | 'breakStart' | 'breakEnd' | 'clockOut';
+        actionType?: 'clockIn' | 'breakStart' | 'breakEnd' | 'clockOut' | 'lateReason';
         timestamp?: Date;
     }
 ): Promise<{ fileId: string; viewUrl: string }> {
@@ -68,7 +68,8 @@ export async function uploadFile(
             'clockIn': 'AbsenMasuk',
             'breakStart': 'MulaiIstirahat',
             'breakEnd': 'SelesaiIstirahat',
-            'clockOut': 'AbsenPulang'
+            'clockOut': 'AbsenPulang',
+            'lateReason': 'AlasanTelat'
         };
 
         const action = actionMap[metadata.actionType];

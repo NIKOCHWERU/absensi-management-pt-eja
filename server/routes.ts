@@ -74,9 +74,9 @@ export async function registerRoutes(
       fs.writeFileSync(localFilePath, buffer);
       console.log(`[handlePhotoUpload] Saved locally: ${fileName}`);
 
-      // 2. Trigger GDrive upload in background (Don't await it!)
-      // This is what makes it "instant" for the user.
-      uploadFile(
+      // 2. Await GDrive upload to get the actual File ID
+      // This ensures we store the correct reference for the frontend
+      const gDriveFile = await uploadFile(
         buffer,
         fileName,
         mimeType,
@@ -85,15 +85,16 @@ export async function registerRoutes(
           actionType: actionType as any,
           timestamp: new Date()
         }
-      ).catch(err => {
-        console.error(`[handlePhotoUpload] Background GDrive upload failed for ${fileName}:`, err.message);
-      });
+      );
 
-      // 3. Return the local reference immediately
-      return fileName;
+      console.log(`[handlePhotoUpload] GDrive upload success: ${gDriveFile.fileId}`);
+
+      // 3. Return the Google Drive File ID
+      return gDriveFile.fileId;
     } catch (err: any) {
-      console.error(`[handlePhotoUpload] Local write failed:`, err.message);
-      return undefined;
+      console.error(`[handlePhotoUpload] Upload failed for ${fileName}:`, err.message);
+      // Fallback to local filename if GDrive fails, though it might break links if frontend expects ID
+      return fileName;
     }
   }
 
@@ -845,54 +846,82 @@ export async function registerRoutes(
   });
 
   app.patch(api.admin.attendance.leave.update.path, async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
-    const id = parseInt(req.params.id);
-    const { status } = req.body;
+    try {
+      if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
 
-    // Get the request first to know the dates
-    const allRequests = await storage.getAllLeaveRequests();
-    const request = allRequests.find(r => r.id === id);
-    if (!request) return res.status(404).json({ message: "Request not found" });
+      console.log(`[AdminLeaveUpdate] Processing ID: ${id}, Status: ${status}`);
 
-    const updated = await storage.updateLeaveRequestStatus(id, status);
-
-    // If approved, create attendance records automatically for those dates
-    if (status === 'approved') {
-      const datesToProcess: string[] = [];
-      if (request.selectedDates) {
-        datesToProcess.push(...request.selectedDates.split(','));
-      } else {
-        let current = new Date(request.startDate);
-        const end = new Date(request.endDate);
-        while (current <= end) {
-          datesToProcess.push(format(current, "yyyy-MM-dd"));
-          current.setDate(current.getDate() + 1);
-        }
+      // Get the request first to know the dates
+      const request = await storage.getLeaveRequestById(id);
+      if (!request) {
+        console.error(`[AdminLeaveUpdate] Request ${id} not found`);
+        return res.status(404).json({ message: "Request not found" });
       }
 
-      for (const dateStr of datesToProcess) {
-        // Find existing record
-        const existing = await storage.getAttendanceByUserAndDate(request.userId, dateStr);
+      const updated = await storage.updateLeaveRequestStatus(id, status);
+      console.log(`[AdminLeaveUpdate] Status updated to: ${status}`);
 
-        if (!existing) {
-          await storage.createAttendance({
-            userId: request.userId,
-            date: dateStr as any,
-            status: 'cuti',
-            notes: `Cuti Disetujui: ${request.reason}`,
-            shift: 'Management',
-            sessionNumber: 1
-          });
+      // If approved, create attendance records automatically for those dates
+      if (status === 'approved') {
+        const datesToProcess: string[] = [];
+        if (request.selectedDates) {
+          console.log(`[AdminLeaveUpdate] Processing selected dates list`);
+          datesToProcess.push(...request.selectedDates.split(',').filter(d => d.trim() !== ''));
         } else {
-          await storage.updateAttendance(existing.id, {
-            status: 'cuti',
-            notes: `Cuti Disetujui: ${request.reason}`
-          });
+          console.log(`[AdminLeaveUpdate] Processing date range: ${request.startDate} to ${request.endDate}`);
+          // Ensure we have valid dates
+          let current = new Date(request.startDate);
+          const end = new Date(request.endDate);
+
+          // Safety check for absolute dates to avoid timezone shifts
+          // If the date is string like YYYY-MM-DD, new Date() might be UTC
+          if (typeof request.startDate === 'string' && request.startDate.includes('-')) {
+            // Use UTC to avoid local timezone shifts which can change the day
+            current = new Date(request.startDate + 'T00:00:00Z');
+          }
+
+          let safetyCounter = 0;
+          while (current <= end && safetyCounter < 40) { // Safety limit of 40 days
+            const dateStr = format(current, "yyyy-MM-dd");
+            datesToProcess.push(dateStr);
+            current.setUTCDate(current.getUTCDate() + 1);
+            safetyCounter++;
+          }
+        }
+
+        console.log(`[AdminLeaveUpdate] Dates to process: ${datesToProcess.join(', ')}`);
+
+        for (const dateStr of datesToProcess) {
+          if (!dateStr) continue;
+
+          // Find existing record
+          const existing = await storage.getAttendanceByUserAndDate(request.userId, dateStr);
+
+          if (!existing) {
+            await storage.createAttendance({
+              userId: request.userId,
+              date: dateStr as any,
+              status: 'cuti',
+              notes: `Cuti Disetujui: ${request.reason}`,
+              shift: 'Management',
+              sessionNumber: 1
+            });
+          } else {
+            await storage.updateAttendance(existing.id, {
+              status: 'cuti',
+              notes: `Cuti Disetujui: ${request.reason}`
+            });
+          }
         }
       }
-    }
 
-    res.json(updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error(`[AdminLeaveUpdate] FATAL ERROR:`, error);
+      res.status(500).json({ message: "Internal Server Error", detail: error.message });
+    }
   });
 
   return httpServer;

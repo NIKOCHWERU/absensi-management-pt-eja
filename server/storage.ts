@@ -219,6 +219,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(leaveRequests.createdAt));
   }
 
+  async getLeaveRequestById(id: number): Promise<LeaveRequest | undefined> {
+    const [record] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id));
+    return record;
+  }
+
   async updateLeaveRequestStatus(id: number, status: string): Promise<LeaveRequest> {
     await db.update(leaveRequests)
       .set({ status: status as any })
