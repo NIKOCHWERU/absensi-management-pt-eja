@@ -44,6 +44,8 @@ export const attendance = mysqlTable("attendance", {
   sessionNumber: int("session_number").default(1), // Track multiple sessions per day
   status: mysqlEnum("status", ["present", "late", "sick", "permission", "absent"]).default("absent"),
   notes: text("notes"), // For permission/sick details
+  lateReason: text("late_reason"),
+  lateReasonPhoto: varchar("late_reason_photo", { length: 255 }),
   permitExitAt: timestamp("permit_exit_at"), // When they left for permit mid-day
   permitResumeAt: timestamp("permit_resume_at"), // When they resumed work
 }, (table) => ({

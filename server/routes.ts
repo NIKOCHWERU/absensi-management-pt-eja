@@ -39,7 +39,7 @@ export async function registerRoutes(
   // Helper to handle photo upload
   async function handlePhotoUpload(
     req: Request,
-    actionType: 'clockIn' | 'breakStart' | 'breakEnd' | 'clockOut'
+    actionType: 'clockIn' | 'breakStart' | 'breakEnd' | 'clockOut' | 'lateReason'
   ): Promise<string | undefined> {
     console.log(`[handlePhotoUpload] Action: ${actionType}, Method: ${req.file ? 'Multipart' : 'Base64'}`);
 
@@ -129,6 +129,16 @@ export async function registerRoutes(
       const photoFileId = await handlePhotoUpload(req, 'clockIn');
       const location = req.body.location;
       const shift = req.body.shift || 'Management'; // Default to Management if missing
+      const lateReason = req.body.lateReason;
+
+      let lateReasonPhotoId = undefined;
+      if (req.body.lateReasonPhoto) {
+        // Handle late reason photo (base64)
+        lateReasonPhotoId = await handlePhotoUpload({
+          ...req,
+          body: { ...req.body, checkInPhoto: req.body.lateReasonPhoto }
+        } as any, 'lateReason');
+      }
 
       // Determine status based on Shift Rules
       const now = new Date();
@@ -171,7 +181,9 @@ export async function registerRoutes(
         checkInPhoto: photoFileId,
         checkInLocation: location,
         shift: shift,
-        sessionNumber: nextSessionNumber
+        sessionNumber: nextSessionNumber,
+        lateReason: lateReason,
+        lateReasonPhoto: lateReasonPhotoId
       });
 
       console.log(`[ClockIn] Success: Created session ${nextSessionNumber} for user ${userId}`);
@@ -366,24 +378,31 @@ export async function registerRoutes(
     const today = getJakartaDate();
     const sessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, today);
 
-    // Auto-close logic: if sessions are from before today's 4AM boundary, close them
-    if (sessions.length === 0) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-      const yesterdaySessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, yesterdayStr);
-      const openSession = yesterdaySessions.find(s => !s.checkOut);
+    // Auto-close logic: if we are past 04:00 AM, check for open sessions from previous days
+    const now = new Date();
+    const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    });
+    const timeParts = jakartaFormatter.formatToParts(now);
+    const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
 
-      if (openSession) {
-        const now = new Date();
-        const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-        if (jakartaTime.getHours() >= 4) {
-          // Auto-close yesterday's session at 04:00 AM
-          await storage.updateAttendance(openSession.id, {
-            checkOut: new Date(jakartaTime.setHours(4, 0, 0, 0)),
-            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 04:00)` : "Auto-closed at 04:00"
+    if (hour >= 4) {
+      if (sessions.length === 0) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const yesterdaySessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, yesterdayStr);
+        const openSessions = yesterdaySessions.filter(s => !s.checkOut);
+
+        for (const session of openSessions) {
+          await storage.updateAttendance(session.id, {
+            checkOut: new Date(new Date(session.date).setHours(23, 59, 59)), // End of that day
+            notes: session.notes ? `${session.notes} (Sesi ditutup otomatis: Lupa Absen Pulang)` : "Sesi ditutup otomatis: Lupa Absen Pulang"
           });
-          console.log(`[AutoReset] Closed session ${openSession.sessionNumber} for user ${req.user!.id} from ${yesterdayStr}`);
+          console.log(`[AutoReset] Closed session ${session.sessionNumber} for user ${req.user!.id} from ${yesterdayStr}`);
         }
       }
     }

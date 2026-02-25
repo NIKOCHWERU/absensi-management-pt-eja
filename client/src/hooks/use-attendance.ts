@@ -14,7 +14,7 @@ export function useAttendance() {
   const sessionCount = todaySessions.length;
 
   const clockInMutation = useMutation({
-    mutationFn: async (data: { location: string; checkInPhoto: string; shift?: string }) => {
+    mutationFn: async (data: { location: string; checkInPhoto: string; shift?: string; lateReason?: string; lateReasonPhoto?: string }) => {
       await apiRequest("POST", "/api/attendance/clock-in", data);
     },
     onSuccess: () => {

@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CameraModal } from "@/components/CameraModal";
+import { LateReasonModal } from "@/components/LateReasonModal";
 import { WorkTimer } from "@/components/WorkTimer";
 
 // Helper component for Shift Selection Modal
@@ -100,6 +101,9 @@ export default function EmployeeDashboard() {
         type: 'attendance' | 'permit'
     } | null>(null);
 
+    const [isLateReasonModalOpen, setIsLateReasonModalOpen] = useState(false);
+    const [lateReasonData, setLateReasonData] = useState<{ reason: string, photo?: string } | null>(null);
+
     const [locationAddress, setLocationAddress] = useState<string>("");
     const [processingLocation, setProcessingLocation] = useState(false);
 
@@ -148,9 +152,21 @@ export default function EmployeeDashboard() {
         });
     };
 
-    const startAttendanceFlow = async (actionFn: (data: any) => Promise<any>, successTitle: string, requireShift = false) => {
+    const startAttendanceFlow = async (actionFn: (data: any) => Promise<any>, successTitle: string, isClockIn = false) => {
+        // If it's a clock-in and session 1 and after 07:00, show late reason modal first
+        if (isClockIn && sessionCount === 0) {
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            if (hour * 60 + minute > 420) { // After 07:00
+                setActiveAction({ fn: actionFn, successTitle, type: 'attendance' });
+                setIsLateReasonModalOpen(true);
+                return;
+            }
+        }
+
         // For PT ELOK JAYA ABADHI, we only use 'Management' shift.
-        if (requireShift) {
+        if (isClockIn && sessionCount === 0) {
             const wrappedClockIn = async (data: any) => {
                 return clockIn({ ...data, shift: 'Management' });
             };
@@ -160,6 +176,18 @@ export default function EmployeeDashboard() {
         }
 
         setActiveAction({ fn: actionFn, successTitle, type: 'attendance' });
+        setIsCameraOpen(true);
+    };
+
+    const handleLateReasonSubmit = (reason: string, photo?: string) => {
+        setLateReasonData({ reason, photo });
+        setIsLateReasonModalOpen(false);
+
+        // Continue to Camera Modal with Management shift
+        const wrappedClockIn = async (data: any) => {
+            return clockIn({ ...data, shift: 'Management' });
+        };
+        setActiveAction({ fn: wrappedClockIn, successTitle: "Berhasil Absen Masuk", type: 'attendance' });
         setIsCameraOpen(true);
     };
 
@@ -191,11 +219,17 @@ export default function EmployeeDashboard() {
 
         try {
             const { address } = await getCoordinates();
-
-            await activeAction.fn({
+            const payload: any = {
                 location: address,
                 checkInPhoto: photoData
-            });
+            };
+
+            if (lateReasonData) {
+                payload.lateReason = lateReasonData.reason;
+                payload.lateReasonPhoto = lateReasonData.photo;
+            }
+
+            await activeAction.fn(payload);
 
             toast({
                 title: activeAction.successTitle,
@@ -208,6 +242,7 @@ export default function EmployeeDashboard() {
             setActiveAction(null);
             // Clear shift selection after success
             setSelectedShift(null);
+            setLateReasonData(null);
 
         } catch (err: any) {
             handleError(err);
@@ -440,6 +475,13 @@ export default function EmployeeDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
+            {/* Late Reason Modal */}
+            <LateReasonModal
+                isOpen={isLateReasonModalOpen}
+                onClose={() => setIsLateReasonModalOpen(false)}
+                onSubmit={handleLateReasonSubmit}
+            />
+
             {/* Camera Modal */}
             <CameraModal
                 open={isCameraOpen}
