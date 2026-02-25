@@ -59,9 +59,19 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/leave-requests',
-      input: insertLeaveRequestSchema,
+      input: insertLeaveRequestSchema.extend({
+        selectedDates: z.array(z.string()).optional(),
+      }),
       responses: {
         201: z.custom<typeof leaveRequests.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    cancel: {
+      method: 'POST' as const,
+      path: '/api/leave-requests/:id/cancel',
+      responses: {
+        200: z.custom<typeof leaveRequests.$inferSelect>(),
         400: errorSchemas.validation,
       },
     },

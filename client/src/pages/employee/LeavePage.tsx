@@ -18,7 +18,7 @@ import { DateRange } from "react-day-picker";
 export default function LeavePage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const [selectedDates, setSelectedDates] = useState<Date[] | undefined>([]);
     const [reason, setReason] = useState("");
 
     const { data: balance, isLoading: isLoadingBalance } = useQuery<{ used: number, remaining: number, limit: number }>({
@@ -45,7 +45,7 @@ export default function LeavePage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [api.leave.list.path] });
             queryClient.invalidateQueries({ queryKey: [api.leave.balance.path] });
-            setDateRange(undefined);
+            setSelectedDates([]);
             setReason("");
             toast({
                 title: "Berhasil",
@@ -61,17 +61,49 @@ export default function LeavePage() {
         }
     });
 
+    const cancelMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(api.leave.cancel.path.replace(':id', id.toString()), {
+                method: 'POST',
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "Gagal membatalkan cuti");
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [api.leave.list.path] });
+            queryClient.invalidateQueries({ queryKey: [api.leave.balance.path] });
+            toast({
+                title: "Dibatalkan",
+                description: "Permohonan cuti telah dibatalkan.",
+            });
+        },
+        onError: (err: any) => {
+            toast({
+                title: "Gagal",
+                description: err.message,
+                variant: "destructive",
+            });
+        }
+    });
+
     const handleApply = () => {
-        if (!dateRange?.from || !dateRange?.to) {
-            return toast({ title: "Pilih Tanggal", description: "Mohon pilih rentang tanggal cuti.", variant: "destructive" });
+        if (!selectedDates || selectedDates.length === 0) {
+            return toast({ title: "Pilih Tanggal", description: "Mohon pilih minimal satu tanggal cuti.", variant: "destructive" });
         }
         if (!reason.trim()) {
             return toast({ title: "Isi Alasan", description: "Mohon masukkan alasan cuti Anda.", variant: "destructive" });
         }
 
+        // Sort dates to determine start and end (for backward compat/display)
+        const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+
         mutation.mutate({
-            startDate: format(dateRange.from, "yyyy-MM-dd"),
-            endDate: format(dateRange.to, "yyyy-MM-dd"),
+            startDate: format(sortedDates[0], "yyyy-MM-dd"),
+            endDate: format(sortedDates[sortedDates.length - 1], "yyyy-MM-dd"),
+            selectedDates: sortedDates.map(d => format(d, "yyyy-MM-dd")),
             reason,
         });
     };
@@ -88,6 +120,7 @@ export default function LeavePage() {
         switch (status) {
             case 'approved': return 'Disetujui';
             case 'rejected': return 'Ditolak';
+            case 'cancelled': return 'Dibatalkan';
             default: return 'Menunggu';
         }
     };
@@ -139,23 +172,27 @@ export default function LeavePage() {
                     <CardContent className="p-4 space-y-4">
                         <div className="bg-gray-50 rounded-2xl p-2 flex justify-center border border-gray-100">
                             <Calendar
-                                mode="range"
-                                selected={dateRange}
-                                onSelect={setDateRange}
+                                mode="multiple"
+                                selected={selectedDates}
+                                onSelect={setSelectedDates}
                                 disabled={(date) => isBefore(date, startOfDay(new Date()))}
                                 initialFocus
                                 className="w-full h-full flex justify-center"
+                                max={12}
                             />
                         </div>
 
-                        {totalSelectedDays > 0 && (
-                            <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex items-center gap-3">
-                                <div className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-lg">
-                                    {totalSelectedDays} Hari
+                        {selectedDates && selectedDates.length > 0 && (
+                            <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                                        {selectedDates.length} Hari
+                                    </div>
+                                    <p className="text-[10px] text-green-700 font-bold uppercase tracking-wider">Terpilih</p>
                                 </div>
-                                <p className="text-xs text-green-700 font-medium">
-                                    {format(dateRange!.from!, "d MMM")} - {format(dateRange!.to!, "d MMM yyyy", { locale: id })}
-                                </p>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 p-0 px-2" onClick={() => setSelectedDates([])}>
+                                    RESET
+                                </Button>
                             </div>
                         )}
 
@@ -211,9 +248,26 @@ export default function LeavePage() {
                                                 </p>
                                                 <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{req.reason}</p>
                                             </div>
-                                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${getStatusColor(req.status!)}`}>
-                                                {getStatusLabel(req.status!)}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${getStatusColor(req.status!)}`}>
+                                                    {getStatusLabel(req.status!)}
+                                                </span>
+                                                {req.status === 'pending' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-2 rounded-lg"
+                                                        onClick={() => {
+                                                            if (confirm("Ingin membatalkan pengajuan ini?")) {
+                                                                cancelMutation.mutate(req.id);
+                                                            }
+                                                        }}
+                                                        disabled={cancelMutation.isPending}
+                                                    >
+                                                        {cancelMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "BATALKAN"}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))

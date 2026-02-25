@@ -779,47 +779,65 @@ export async function registerRoutes(
     res.json(requests);
   });
 
+  app.get(api.leave.balance.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const year = new Date().getFullYear();
+    const used = await storage.getApprovedLeaveDaysCount(req.user!.id, year);
+    res.json({ used, remaining: 12 - used, limit: 12 });
+  });
+
   app.post(api.leave.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { startDate, endDate, reason, selectedDates } = req.body;
 
-    // Validate stay within 12 days limit
-    const currentYear = new Date().getFullYear();
-    const approvedDays = await storage.getApprovedLeaveDaysCount(req.user!.id, currentYear);
+    const year = new Date(startDate).getFullYear();
+    const used = await storage.getApprovedLeaveDaysCount(req.user!.id, year);
 
-    const { startDate, endDate, reason } = req.body;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const requestedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    let requestedDays = 0;
+    if (selectedDates && Array.isArray(selectedDates)) {
+      requestedDays = selectedDates.length;
+    } else {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      requestedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
 
-    if (approvedDays + requestedDays > 12) {
-      return res.status(400).json({
-        message: `Sisa kuota cuti Anda tidak mencukupi. (Terpakai: ${approvedDays}/12)`
-      });
+    if (used + requestedDays > 12) {
+      return res.status(400).json({ message: `Sisa kuota cuti Anda tidak mencukupi. (Terpakai: ${used}/12, Diminta: ${requestedDays})` });
     }
 
     const request = await storage.createLeaveRequest({
       userId: req.user!.id,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
+      selectedDates: selectedDates ? selectedDates.join(',') : null,
       reason,
       status: 'pending'
     });
     res.status(201).json(request);
   });
 
-  app.get(api.leave.balance.path, async (req, res) => {
+  app.post(api.leave.cancel.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const currentYear = new Date().getFullYear();
-    const approvedDays = await storage.getApprovedLeaveDaysCount(req.user!.id, currentYear);
-    res.json({
-      used: approvedDays,
-      remaining: 12 - approvedDays,
-      limit: 12
-    });
+    const id = parseInt(req.params.id);
+    const requests = await storage.getLeaveRequestsByUser(req.user!.id);
+    const request = requests.find(r => r.id === id);
+
+    if (!request) return res.status(404).json({ message: "Permohonan tidak ditemukan" });
+    if (request.status !== 'pending') return res.status(400).json({ message: "Hanya permohonan pending yang bisa dibatalkan" });
+
+    const updated = await storage.updateLeaveRequestStatus(id, 'cancelled');
+    res.json(updated);
   });
 
   // Admin Leave Routes
+  app.get("/api/admin/leave-requests/recent", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const requests = await storage.getRecentLeaveRequests(5);
+    res.json(requests);
+  });
+
   app.get(api.admin.attendance.leave.list.path, async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
     const requests = await storage.getAllLeaveRequests();
@@ -840,11 +858,19 @@ export async function registerRoutes(
 
     // If approved, create attendance records automatically for those dates
     if (status === 'approved') {
-      let current = new Date(request.startDate);
-      const end = new Date(request.endDate);
+      const datesToProcess: string[] = [];
+      if (request.selectedDates) {
+        datesToProcess.push(...request.selectedDates.split(','));
+      } else {
+        let current = new Date(request.startDate);
+        const end = new Date(request.endDate);
+        while (current <= end) {
+          datesToProcess.push(format(current, "yyyy-MM-dd"));
+          current.setDate(current.getDate() + 1);
+        }
+      }
 
-      while (current <= end) {
-        const dateStr = format(current, "yyyy-MM-dd");
+      for (const dateStr of datesToProcess) {
         // Find existing record
         const existing = await storage.getAttendanceByUserAndDate(request.userId, dateStr);
 
@@ -863,7 +889,6 @@ export async function registerRoutes(
             notes: `Cuti Disetujui: ${request.reason}`
           });
         }
-        current.setDate(current.getDate() + 1);
       }
     }
 

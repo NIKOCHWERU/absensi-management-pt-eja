@@ -83,8 +83,9 @@ export const leaveRequests = mysqlTable("leave_requests", {
   userId: int("user_id").notNull(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
+  selectedDates: text("selected_dates"), // Comma separated dates for non-contiguous selection
   reason: text("reason").notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userIdIdx: index("idx_leave_request_user_id").on(table.userId),

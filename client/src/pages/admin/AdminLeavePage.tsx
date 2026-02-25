@@ -101,20 +101,35 @@ export default function AdminLeavePage() {
                                         </div>
                                     </div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${req.status === 'approved' ? 'text-green-600 bg-green-50 border-green-100' :
-                                        req.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-100' :
-                                            'text-orange-600 bg-orange-50 border-orange-100'
+                                            req.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-100' :
+                                                req.status === 'cancelled' ? 'text-gray-600 bg-gray-50 border-gray-100' :
+                                                    'text-orange-600 bg-orange-50 border-orange-100'
                                         }`}>
-                                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                                        {req.status === 'approved' ? 'Disetujui' :
+                                            req.status === 'rejected' ? 'Ditolak' :
+                                                req.status === 'cancelled' ? 'Dibatalkan' : 'Pending'}
                                     </span>
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-4">
                                     <div className="bg-gray-50 p-4 rounded-2xl space-y-2 border border-gray-100">
                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                                            <Calendar className="w-3 h-3" /> PERIODE CUTI
+                                            <Calendar className="w-3 h-3" /> {req.selectedDates ? "TANGGAL TERPILIH" : "PERIODE CUTI"}
                                         </div>
-                                        <p className="font-bold text-gray-800">
-                                            {format(new Date(req.startDate), "EEEE, d MMM", { locale: id })} - {format(new Date(req.endDate), "EEEE, d MMM yyyy", { locale: id })}
-                                        </p>
+                                        <div className="font-bold text-gray-800">
+                                            {req.selectedDates ? (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {req.selectedDates.split(',').map(d => (
+                                                        <span key={d} className="bg-white px-2 py-0.5 rounded-md border border-gray-100 text-[10px]">
+                                                            {format(new Date(d), "d MMM yyyy", { locale: id })}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p>
+                                                    {format(new Date(req.startDate), "EEEE, d MMM", { locale: id })} - {format(new Date(req.endDate), "EEEE, d MMM yyyy", { locale: id })}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">

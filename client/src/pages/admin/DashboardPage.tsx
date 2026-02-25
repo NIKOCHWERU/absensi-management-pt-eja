@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare } from "lucide-react";
+import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History } from "lucide-react";
 import {
     BarChart,
     Bar,
@@ -44,6 +44,13 @@ export default function AdminDashboard() {
         refetchInterval: 10000, // Poll every 10 seconds
     });
 
+    const [prevLeavePendingCount, setPrevLeavePendingCount] = useState<number>(0);
+
+    const { data: leaveRequests } = useQuery<LeaveRequest[]>({
+        queryKey: [api.admin.attendance.leave.list.path],
+        refetchInterval: 10000,
+    });
+
     // Browser Notification Logic
     useEffect(() => {
         if (complaintsStats && complaintsStats.pendingCount > prevPendingCount) {
@@ -53,11 +60,22 @@ export default function AdminDashboard() {
                     icon: "/logo_elok_buah.jpg"
                 });
             }
-            setPrevPendingCount(complaintsStats.pendingCount);
-        } else if (complaintsStats) {
-            setPrevPendingCount(complaintsStats.pendingCount);
         }
+        setPrevPendingCount(complaintsStats?.pendingCount || 0);
     }, [complaintsStats?.pendingCount]);
+
+    useEffect(() => {
+        const pendingLeave = leaveRequests?.filter(r => r.status === 'pending') || [];
+        if (pendingLeave.length > prevLeavePendingCount) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Pengajuan Cuti Baru", {
+                    body: `Ada ${pendingLeave.length} pengajuan cuti yang menunggu persetujuan.`,
+                    icon: "/logo_elok_buah.jpg"
+                });
+            }
+        }
+        setPrevLeavePendingCount(pendingLeave.length);
+    }, [leaveRequests]);
 
     // Request Permission on mount
     useEffect(() => {
@@ -140,7 +158,16 @@ export default function AdminDashboard() {
                         </Button>
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/leave")}>
                             <CalendarDays className="mr-2 h-4 w-4" />
-                            Pengajuan Cuti
+                            Manajemen Cuti
+                            {leaveRequests && leaveRequests.filter(r => r.status === 'pending').length > 0 && (
+                                <span className="ml-auto bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                    {leaveRequests.filter(r => r.status === 'pending').length}
+                                </span>
+                            )}
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/leave-history")}>
+                            <History className="mr-2 h-4 w-4" />
+                            Riwayat Cuti
                         </Button>
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
                             <FileText className="mr-2 h-4 w-4" />
@@ -245,22 +272,22 @@ export default function AdminDashboard() {
 
                     <Card
                         className="border-none shadow-sm hover:shadow-md transition-all bg-white rounded-xl overflow-hidden group cursor-pointer hover:translate-y-[-2px]"
-                        onClick={() => setLocation("/admin/complaints")}
+                        onClick={() => setLocation("/admin/leave")}
                     >
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-500 mb-1">Pengaduan Baru</p>
-                                    <h3 className="text-4xl font-bold text-orange-600">
-                                        {complaintsStats?.pendingCount || 0}
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Cuti Menunggu</p>
+                                    <h3 className="text-4xl font-bold text-blue-600">
+                                        {leaveRequests?.filter(r => r.status === 'pending').length || 0}
                                     </h3>
                                 </div>
-                                <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-50 rounded-lg group-hover:scale-110 transition-transform">
-                                    <MessageSquare className="h-6 w-6 text-orange-600" />
+                                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg group-hover:scale-110 transition-transform">
+                                    <CalendarDays className="h-6 w-6 text-blue-500" />
                                 </div>
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-gray-400">
-                                <span>Menunggu Tanggapan</span>
+                                <span>Perlu Persetujuan</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -539,6 +566,61 @@ export default function AdminDashboard() {
                                         </div>
                                     ));
                                 })()}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Recent Leave Requests Card */}
+                <div className="mt-8">
+                    <Card className="border-none shadow-md bg-white">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-lg font-bold text-gray-800">Daftar Pengajuan Cuti Terbaru</CardTitle>
+                            <Button variant="ghost" size="sm" className="text-blue-600 font-bold" onClick={() => setLocation("/admin/leave")}>
+                                Lihat Semua
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {leaveRequests?.slice(0, 3).map((req) => (
+                                    <div key={req.id} className="p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setLocation("/admin/leave")}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                                                    {getUserNik(req.userId).toString().charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-800 truncate max-w-[100px]">{users?.find(u => u.id === req.userId)?.fullName || 'User'}</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">{getUserNik(req.userId)}</p>
+                                                </div>
+                                            </div>
+                                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border 
+                                                ${req.status === 'approved' ? 'text-green-600 bg-green-50 border-green-100' :
+                                                    req.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-100' :
+                                                        req.status === 'cancelled' ? 'text-gray-600 bg-gray-50 border-gray-100' :
+                                                            'text-orange-600 bg-orange-50 border-orange-100'}`}>
+                                                {req.status}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase">
+                                                <CalendarDays className="w-3 h-3 text-gray-400" />
+                                                {req.selectedDates ? "Beberapa Tanggal" : "Rentang Tanggal"}
+                                            </div>
+                                            <p className="text-xs font-bold text-gray-700">
+                                                {format(new Date(req.startDate), "d MMM")} - {format(new Date(req.endDate), "d MMM yyyy")}
+                                            </p>
+                                        </div>
+                                        <div className="mt-2 text-xs text-gray-500 italic line-clamp-1">
+                                            "{req.reason}"
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!leaveRequests || leaveRequests.length === 0) && (
+                                    <div className="col-span-full py-12 text-center text-gray-400">
+                                        <p>Belum ada pengajuan cuti.</p>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

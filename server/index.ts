@@ -77,13 +77,22 @@ app.use((req, res, next) => {
         user_id INT NOT NULL,
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
+        selected_dates TEXT,
         reason TEXT NOT NULL,
-        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_leave_request_user_id (user_id),
         INDEX idx_leave_request_status (status)
       )
     `);
+
+    // Ensure selected_dates exists and ENUM is updated
+    try {
+      await connection.query("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS selected_dates TEXT AFTER end_date");
+      await connection.query("ALTER TABLE leave_requests MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending'");
+    } catch (e) {
+      log(`Migration details (non-critical): ${e}`, "db");
+    }
 
     log("Auto-migration completed.");
     connection.release();

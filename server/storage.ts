@@ -5,7 +5,8 @@ import {
   users, attendance, announcements, complaints, complaintPhotos, leaveRequests
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, or, isNotNull } from "drizzle-orm";
+import { format } from "date-fns";
 import session from "express-session";
 import MySQLSessionStore from "express-mysql-session";
 import { poolConnection } from "./db";
@@ -227,28 +228,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getApprovedLeaveDaysCount(userId: number, year: number): Promise<number> {
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
-
     const records = await db.select().from(leaveRequests)
       .where(and(
         eq(leaveRequests.userId, userId),
-        eq(leaveRequests.status, "approved"),
-        gte(leaveRequests.startDate, startDate),
-        lte(leaveRequests.endDate, endDate)
+        eq(leaveRequests.status, "approved")
       ));
 
-    // Calculate total days
     let totalDays = 0;
     records.forEach(r => {
-      const start = new Date(r.startDate);
-      const end = new Date(r.endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      totalDays += diffDays;
+      if (r.selectedDates) {
+        const dates = r.selectedDates.split(',').filter(d => d.startsWith(`${year}`));
+        totalDays += dates.length;
+      } else {
+        const start = new Date(r.startDate);
+        const end = new Date(r.endDate);
+        if (start.getFullYear() === year) {
+          const diffTime = Math.abs(end.getTime() - start.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          totalDays += diffDays;
+        }
+      }
     });
 
     return totalDays;
+  }
+
+  async getRecentLeaveRequests(limit: number = 5): Promise<LeaveRequest[]> {
+    return await db.select().from(leaveRequests)
+      .orderBy(desc(leaveRequests.createdAt))
+      .limit(limit);
   }
 }
 
@@ -294,4 +302,5 @@ export interface IStorage {
   getAllLeaveRequests(): Promise<LeaveRequest[]>;
   updateLeaveRequestStatus(id: number, status: string): Promise<LeaveRequest>;
   getApprovedLeaveDaysCount(userId: number, year: number): Promise<number>;
+  getRecentLeaveRequests(limit?: number): Promise<LeaveRequest[]>;
 }

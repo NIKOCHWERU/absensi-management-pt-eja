@@ -19,6 +19,7 @@ import AdminRecap from "@/pages/admin/RecapPage";
 import InfoBoardPage from "@/pages/admin/InfoBoardPage";
 import AdminComplaints from "@/pages/admin/ComplaintsPage";
 import AdminLeave from "@/pages/admin/AdminLeavePage";
+import AdminLeaveHistory from "@/pages/admin/AdminLeaveHistoryPage";
 import EmployeeComplaint from "@/pages/employee/ComplaintPage";
 import EmployeeLeave from "@/pages/employee/LeavePage";
 import NotFound from "@/pages/not-found";
@@ -83,6 +84,9 @@ function Router() {
       </Route>
       <Route path="/admin/leave">
         <ProtectedRoute component={AdminLeave} adminOnly />
+      </Route>
+      <Route path="/admin/leave-history">
+        <ProtectedRoute component={AdminLeaveHistory} adminOnly />
       </Route>
 
       {/* Employee & Shared Routes */}
