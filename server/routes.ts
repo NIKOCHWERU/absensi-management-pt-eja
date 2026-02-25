@@ -10,6 +10,8 @@ import { uploadFile } from "./services/googleDrive";
 import { User as DbUser } from "@shared/schema";
 import fs from "fs";
 import path from "path";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 declare global {
   namespace Express {
@@ -767,6 +769,104 @@ export async function registerRoutes(
       console.error(e);
       res.status(500).json({ message: "Gagal update status" });
     }
+  });
+
+  // --- Leave Request Routes ---
+
+  app.get(api.leave.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requests = await storage.getLeaveRequestsByUser(req.user!.id);
+    res.json(requests);
+  });
+
+  app.post(api.leave.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Validate stay within 12 days limit
+    const currentYear = new Date().getFullYear();
+    const approvedDays = await storage.getApprovedLeaveDaysCount(req.user!.id, currentYear);
+
+    const { startDate, endDate, reason } = req.body;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const requestedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    if (approvedDays + requestedDays > 12) {
+      return res.status(400).json({
+        message: `Sisa kuota cuti Anda tidak mencukupi. (Terpakai: ${approvedDays}/12)`
+      });
+    }
+
+    const request = await storage.createLeaveRequest({
+      userId: req.user!.id,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      reason,
+      status: 'pending'
+    });
+    res.status(201).json(request);
+  });
+
+  app.get(api.leave.balance.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentYear = new Date().getFullYear();
+    const approvedDays = await storage.getApprovedLeaveDaysCount(req.user!.id, currentYear);
+    res.json({
+      used: approvedDays,
+      remaining: 12 - approvedDays,
+      limit: 12
+    });
+  });
+
+  // Admin Leave Routes
+  app.get(api.admin.leave.list.path, async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const requests = await storage.getAllLeaveRequests();
+    res.json(requests);
+  });
+
+  app.patch(api.admin.leave.update.path, async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+
+    // Get the request first to know the dates
+    const allRequests = await storage.getAllLeaveRequests();
+    const request = allRequests.find(r => r.id === id);
+    if (!request) return res.status(404).json({ message: "Request not found" });
+
+    const updated = await storage.updateLeaveRequestStatus(id, status);
+
+    // If approved, create attendance records automatically for those dates
+    if (status === 'approved') {
+      let current = new Date(request.startDate);
+      const end = new Date(request.endDate);
+
+      while (current <= end) {
+        // Find existing record
+        const existing = await storage.getAttendanceByUserAndDate(request.userId, current);
+
+        if (!existing) {
+          await storage.createAttendance({
+            userId: request.userId,
+            date: new Date(current),
+            status: 'cuti',
+            notes: `Cuti Disetujui: ${request.reason}`,
+            shift: 'Management',
+            sessionNumber: 1
+          });
+        } else {
+          await storage.updateAttendance(existing.id, {
+            status: 'cuti',
+            notes: `Cuti Disetujui: ${request.reason}`
+          });
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    }
+
+    res.json(updated);
   });
 
   return httpServer;

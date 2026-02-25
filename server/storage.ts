@@ -1,7 +1,8 @@
 import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
   Complaint, InsertComplaint, ComplaintPhoto, InsertComplaintPhoto,
-  users, attendance, announcements, complaints, complaintPhotos
+  LeaveRequest, InsertLeaveRequest,
+  users, attendance, announcements, complaints, complaintPhotos, leaveRequests
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
@@ -197,6 +198,58 @@ export class DatabaseStorage implements IStorage {
       .where(eq(complaints.status, "pending"));
     return result.count;
   }
+
+  // Leave Requests
+  async createLeaveRequest(data: InsertLeaveRequest): Promise<LeaveRequest> {
+    const [result] = await db.insert(leaveRequests).values(data);
+    const id = result.insertId;
+    const [record] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id));
+    return record!;
+  }
+
+  async getLeaveRequestsByUser(userId: number): Promise<LeaveRequest[]> {
+    return await db.select().from(leaveRequests)
+      .where(eq(leaveRequests.userId, userId))
+      .orderBy(desc(leaveRequests.startDate));
+  }
+
+  async getAllLeaveRequests(): Promise<LeaveRequest[]> {
+    return await db.select().from(leaveRequests)
+      .orderBy(desc(leaveRequests.createdAt));
+  }
+
+  async updateLeaveRequestStatus(id: number, status: string): Promise<LeaveRequest> {
+    await db.update(leaveRequests)
+      .set({ status: status as any })
+      .where(eq(leaveRequests.id, id));
+    const [record] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id));
+    return record!;
+  }
+
+  async getApprovedLeaveDaysCount(userId: number, year: number): Promise<number> {
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
+
+    const records = await db.select().from(leaveRequests)
+      .where(and(
+        eq(leaveRequests.userId, userId),
+        eq(leaveRequests.status, "approved"),
+        gte(leaveRequests.startDate, startDate),
+        lte(leaveRequests.endDate, endDate)
+      ));
+
+    // Calculate total days
+    let totalDays = 0;
+    records.forEach(r => {
+      const start = new Date(r.startDate);
+      const end = new Date(r.endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      totalDays += diffDays;
+    });
+
+    return totalDays;
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -234,4 +287,11 @@ export interface IStorage {
   getComplaintPhotos(complaintId: number): Promise<ComplaintPhoto[]>;
   updateComplaintStatus(id: number, status: string): Promise<Complaint>;
   getPendingComplaintsCount(): Promise<number>;
+
+  // Leave Request methods
+  createLeaveRequest(data: InsertLeaveRequest): Promise<LeaveRequest>;
+  getLeaveRequestsByUser(userId: number): Promise<LeaveRequest[]>;
+  getAllLeaveRequests(): Promise<LeaveRequest[]>;
+  updateLeaveRequestStatus(id: number, status: string): Promise<LeaveRequest>;
+  getApprovedLeaveDaysCount(userId: number, year: number): Promise<number>;
 }

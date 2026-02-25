@@ -245,10 +245,11 @@ export default function RecapPage() {
                     row.status === 'late' ? 'Telat' :
                         row.status === 'sick' ? 'Sakit' :
                             row.status === 'permission' ? 'Izin' :
-                                row.status === 'absent' ? 'Alpha' : row.status) +
+                                row.status === 'cuti' ? 'Cuti' :
+                                    row.status === 'absent' ? 'Alpha' : row.status) +
                 ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '')
                 }</td>
-                <td>${row.notes || "-"}</td>
+                <td>${row.notes || ""} ${row.status === 'late' && (row as any).lateReason ? `[Telat: ${(row as any).lateReason}]` : ""}</td>
             </tr>
         `;
         }).join('');

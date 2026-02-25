@@ -109,21 +109,16 @@ export default function EmployeeDashboard() {
     const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
     // ... (Keep existing getCoordinates logic)
-    const getCoordinates = async (): Promise<{ lat: number, lng: number, address: string }> => {
-        if (!navigator.geolocation) {
-            throw new Error("Geolocation is not supported by your browser");
+    const lastLocationFetch = useRef<number>(0);
+    const getCoordinates = async (force = false): Promise<{ lat: number, lng: number, address: string }> => {
+        const now = Date.now();
+        // If we have a location fetched in the last 5 mins, reuse it unless forced
+        if (!force && locationAddress && (now - lastLocationFetch.current < 300000)) {
+            return { lat: 0, lng: 0, address: locationAddress };
         }
 
-        // Inform user before potential browser prompt
-        if ((navigator as any).permissions) {
-            (navigator as any).permissions.query({ name: 'geolocation' }).then((result: any) => {
-                if (result.state === 'prompt') {
-                    toast({
-                        title: "Izin Lokasi Diperlukan",
-                        description: "Mohon izinkan akses lokasi pada browser Anda untuk verifikasi absensi.",
-                    });
-                }
-            });
+        if (!navigator.geolocation) {
+            throw new Error("Geolocation is not supported by your browser");
         }
 
         setProcessingLocation(true);
@@ -150,6 +145,7 @@ export default function EmployeeDashboard() {
             }
 
             setLocationAddress(address);
+            lastLocationFetch.current = Date.now();
             return { lat: latitude, lng: longitude, address };
         } finally {
             setProcessingLocation(false);
@@ -231,7 +227,7 @@ export default function EmployeeDashboard() {
         if (!activeAction) return;
 
         try {
-            const { address } = await getCoordinates();
+            const { address } = await getCoordinates(false);
             const payload: any = {
                 location: address,
                 checkInPhoto: photoData

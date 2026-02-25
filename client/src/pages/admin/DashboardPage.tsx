@@ -138,6 +138,10 @@ export default function AdminDashboard() {
                             <Clock className="mr-2 h-4 w-4" />
                             Rekap Absensi
                         </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/leave")}>
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Pengajuan Cuti
+                        </Button>
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
                             <FileText className="mr-2 h-4 w-4" />
                             Papan Informasi

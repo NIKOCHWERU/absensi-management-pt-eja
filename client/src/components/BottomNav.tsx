@@ -8,6 +8,7 @@ export function BottomNav() {
   const tabs = [
     { href: "/", label: "Absensi", icon: LayoutDashboard },
     { href: "/recap", label: "Rekap", icon: CalendarDays },
+    { href: "/leave", label: "Cuti", icon: CalendarDays },
     { href: "/info", label: "Info", icon: Info },
     { href: "/complaint", label: "Pengaduan", icon: MessageSquare },
   ];

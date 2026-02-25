@@ -78,6 +78,19 @@ export const complaints = mysqlTable("complaints", {
   createdAtIdx: index("idx_complaints_created_at").on(table.createdAt),
 }));
 
+export const leaveRequests = mysqlTable("leave_requests", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  reason: text("reason").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_leave_request_user_id").on(table.userId),
+  statusIdx: index("idx_leave_request_status").on(table.status),
+}));
+
 export const complaintPhotos = mysqlTable("complaint_photos", {
   id: int("id").primaryKey().autoincrement(),
   complaintId: int("complaint_id").notNull(),
@@ -96,6 +109,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   attendanceRecords: many(attendance),
   announcements: many(announcements),
   complaints: many(complaints),
+  leaveRequests: many(leaveRequests),
 }));
 
 export const attendanceRelations = relations(attendance, ({ one }) => ({
@@ -133,6 +147,7 @@ export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: 
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
 export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true });
 export const insertComplaintPhotoSchema = createInsertSchema(complaintPhotos).omit({ id: true });
+export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -145,3 +160,5 @@ export type Complaint = typeof complaints.$inferSelect;
 export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
 export type ComplaintPhoto = typeof complaintPhotos.$inferSelect;
 export type InsertComplaintPhoto = z.infer<typeof insertComplaintPhotoSchema>;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertAttendanceSchema, insertAnnouncementSchema, users, attendance, announcements } from './schema';
+import { insertUserSchema, insertAttendanceSchema, insertAnnouncementSchema, insertLeaveRequestSchema, users, attendance, announcements, leaveRequests } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -45,6 +45,35 @@ export const api = {
       responses: {
         200: z.custom<typeof users.$inferSelect>(),
         401: errorSchemas.unauthorized,
+      },
+    },
+  },
+  leave: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/leave-requests',
+      responses: {
+        200: z.array(z.custom<typeof leaveRequests.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/leave-requests',
+      input: insertLeaveRequestSchema,
+      responses: {
+        201: z.custom<typeof leaveRequests.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    balance: {
+      method: 'GET' as const,
+      path: '/api/leave-balance',
+      responses: {
+        200: z.object({
+          used: z.number(),
+          remaining: z.number(),
+          limit: z.number(),
+        }),
       },
     },
   },
@@ -199,6 +228,28 @@ export const api = {
           200: z.custom<typeof attendance.$inferSelect>(),
           400: errorSchemas.validation,
           401: errorSchemas.unauthorized,
+        },
+      },
+      leave: {
+        list: {
+          method: 'GET' as const,
+          path: '/api/admin/leave-requests',
+          responses: {
+            200: z.array(z.custom<typeof leaveRequests.$inferSelect>()),
+            401: errorSchemas.unauthorized,
+          },
+        },
+        update: {
+          method: 'PATCH' as const,
+          path: '/api/admin/leave-requests/:id',
+          input: z.object({
+            status: z.enum(['approved', 'rejected']),
+          }),
+          responses: {
+            200: z.custom<typeof leaveRequests.$inferSelect>(),
+            400: errorSchemas.validation,
+            401: errorSchemas.unauthorized,
+          },
         },
       },
     },
