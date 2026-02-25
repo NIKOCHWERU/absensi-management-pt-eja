@@ -62,6 +62,19 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Auto-migration: Ensure late_reason columns exist
+  try {
+    const { poolConnection } = await import("./db");
+    const connection = await poolConnection.getConnection();
+    log("Running auto-migration for late_reason columns...");
+    await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason TEXT");
+    await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason_photo VARCHAR(255)");
+    log("Auto-migration completed.");
+    connection.release();
+  } catch (err) {
+    log(`Auto-migration failed (this is expected if columns already exist): ${err}`, "db");
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
