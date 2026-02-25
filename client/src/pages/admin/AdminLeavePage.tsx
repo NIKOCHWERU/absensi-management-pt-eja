@@ -19,12 +19,12 @@ export default function AdminLeavePage() {
     });
 
     const { data: requests, isLoading } = useQuery<LeaveRequest[]>({
-        queryKey: [api.admin.leave.list.path],
+        queryKey: [api.admin.attendance.leave.list.path],
     });
 
     const mutation = useMutation({
         mutationFn: async ({ id, status }: { id: number, status: string }) => {
-            const res = await fetch(api.admin.leave.update.path.replace(':id', id.toString()), {
+            const res = await fetch(api.admin.attendance.leave.update.path.replace(':id', id.toString()), {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
@@ -33,7 +33,7 @@ export default function AdminLeavePage() {
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [api.admin.leave.list.path] });
+            queryClient.invalidateQueries({ queryKey: [api.admin.attendance.leave.list.path] });
             queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
             toast({
                 title: "Berhasil",
@@ -101,8 +101,8 @@ export default function AdminLeavePage() {
                                         </div>
                                     </div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${req.status === 'approved' ? 'text-green-600 bg-green-50 border-green-100' :
-                                            req.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-100' :
-                                                'text-orange-600 bg-orange-50 border-orange-100'
+                                        req.status === 'rejected' ? 'text-red-600 bg-red-50 border-red-100' :
+                                            'text-orange-600 bg-orange-50 border-orange-100'
                                         }`}>
                                         {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
                                     </span>

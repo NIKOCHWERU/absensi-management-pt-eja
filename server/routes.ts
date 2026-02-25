@@ -820,13 +820,13 @@ export async function registerRoutes(
   });
 
   // Admin Leave Routes
-  app.get(api.admin.leave.list.path, async (req, res) => {
+  app.get(api.admin.attendance.leave.list.path, async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
     const requests = await storage.getAllLeaveRequests();
     res.json(requests);
   });
 
-  app.patch(api.admin.leave.update.path, async (req, res) => {
+  app.patch(api.admin.attendance.leave.update.path, async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
     const id = parseInt(req.params.id);
     const { status } = req.body;
@@ -844,13 +844,14 @@ export async function registerRoutes(
       const end = new Date(request.endDate);
 
       while (current <= end) {
+        const dateStr = format(current, "yyyy-MM-dd");
         // Find existing record
-        const existing = await storage.getAttendanceByUserAndDate(request.userId, current);
+        const existing = await storage.getAttendanceByUserAndDate(request.userId, dateStr);
 
         if (!existing) {
           await storage.createAttendance({
             userId: request.userId,
-            date: new Date(current),
+            date: dateStr as any,
             status: 'cuti',
             notes: `Cuti Disetujui: ${request.reason}`,
             shift: 'Management',

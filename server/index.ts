@@ -69,10 +69,26 @@ app.use((req, res, next) => {
     log("Running auto-migration for late_reason columns...");
     await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason TEXT");
     await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason_photo VARCHAR(255)");
+
+    log("Running auto-migration for leave_requests table...");
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS leave_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        reason TEXT NOT NULL,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_leave_request_user_id (user_id),
+        INDEX idx_leave_request_status (status)
+      )
+    `);
+
     log("Auto-migration completed.");
     connection.release();
   } catch (err) {
-    log(`Auto-migration failed (this is expected if columns already exist): ${err}`, "db");
+    log(`Auto-migration failed: ${err}`, "db");
   }
 
   await registerRoutes(httpServer, app);
