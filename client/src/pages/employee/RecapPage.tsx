@@ -3,7 +3,7 @@ import { useMonthlyAttendance } from "@/hooks/use-monthly-attendance";
 import { BottomNav } from "@/components/BottomNav";
 import { AttendanceCalendar } from "@/components/AttendanceCalendar";
 import { useState } from "react";
-import { format, subMonths, addMonths, startOfWeek, endOfWeek, isWithinInterval, subWeeks, addWeeks } from "date-fns";
+import { format, subMonths, addMonths, startOfWeek, endOfWeek, isWithinInterval, subWeeks, addWeeks, subDays, addDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { Loader2, Calendar, Clock, MapPin, Coffee, LogOut, X, LayoutGrid, Calendar as CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -13,6 +13,8 @@ import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
 
 export default function RecapPage() {
   const { user } = useAuth();
+  const [reportType, setReportType] = useState<'daily' | 'monthly'>('daily');
+  const [targetDate, setTargetDate] = useState(new Date()); // For daily view
   const [currentDate, setCurrentDate] = useState(new Date()); // Tracks the "display month"
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [weekDate, setWeekDate] = useState(new Date());
@@ -20,16 +22,19 @@ export default function RecapPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch for current display month (format YYYY-MM)
-  const monthStr = format(currentDate, 'yyyy-MM');
+  // Always fetch current target month to ensure we have data for daily view too
+  const monthStr = format(reportType === 'daily' ? targetDate : currentDate, 'yyyy-MM');
   const { data: attendanceData, isLoading } = useMonthlyAttendance(monthStr, user?.id);
 
   const handlePrev = () => {
-    if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
+    if (reportType === 'daily') setTargetDate(d => subDays(d, 1));
+    else if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
     else setWeekDate(subWeeks(weekDate, 1));
   };
 
   const handleNext = () => {
-    if (viewMode === 'month') setCurrentDate(addMonths(currentDate, 1));
+    if (reportType === 'daily') setTargetDate(d => addDays(d, 1));
+    else if (viewMode === 'month') setCurrentDate(addMonths(currentDate, 1));
     else setWeekDate(addWeeks(weekDate, 1));
   };
 
@@ -42,7 +47,11 @@ export default function RecapPage() {
 
   // Get filtered data based on view mode
   const filteredData = attendanceData?.filter(record => {
-    if (viewMode === 'month') return true; // useMonthlyAttendance already gives 26th-25th
+    if (reportType === 'daily') {
+      return format(new Date(record.date), 'yyyy-MM-dd') === format(targetDate, 'yyyy-MM-dd');
+    }
+
+    if (viewMode === 'month') return true;
 
     // For week view, filter current month's data by week boundary
     const date = new Date(record.date);
@@ -74,31 +83,72 @@ export default function RecapPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-primary pt-10 pb-20 px-6 rounded-b-[2.5rem] shadow-lg mb-[-3rem]">
-        <h1 className="text-2xl font-bold text-white mb-1">Rekap Absensi PT ELOK JAYA ABADHI</h1>
-        <p className="text-white/80 text-sm">Pantau kehadiran bulanan Anda</p>
+        <div className="flex justify-between items-start mb-1">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Riwayat Absensi</h1>
+            <p className="text-white/80 text-sm">PT ELOK JAYA ABADHI</p>
+          </div>
+          <div className="bg-white/10 p-1 rounded-xl flex gap-1">
+            <button
+              onClick={() => setReportType('daily')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportType === 'daily' ? 'bg-white text-primary shadow-sm' : 'text-white/70 hover:text-white'}`}
+            >
+              Harian
+            </button>
+            <button
+              onClick={() => setReportType('monthly')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportType === 'monthly' ? 'bg-white text-primary shadow-sm' : 'text-white/70 hover:text-white'}`}
+            >
+              Bulanan
+            </button>
+          </div>
+        </div>
       </div>
 
       <main className="px-4 max-w-lg mx-auto space-y-6">
 
-        {/* Calendar Card */}
-        <div className="relative z-10">
-          {isLoading ? (
-            <div className="bg-white rounded-2xl h-80 flex items-center justify-center shadow-sm border border-border">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        {/* Calendar Card - Only show in Monthly mode */}
+        {reportType === 'monthly' && (
+          <div className="relative z-10">
+            {isLoading ? (
+              <div className="bg-white rounded-2xl h-80 flex items-center justify-center shadow-sm border border-border">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            ) : (
+              <AttendanceCalendar
+                currentDate={currentDate}
+                onPrevMonth={handlePrev}
+                onNextMonth={handleNext}
+                attendanceData={attendanceData || []}
+                onDateSelect={handleDateSelect}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                weekDate={weekDate}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Daily Selector - Only show in Daily mode */}
+        {reportType === 'daily' && (
+          <div className="relative z-10 bg-white p-4 rounded-2xl shadow-sm border border-border flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-10 w-10 rounded-xl">
+              {/* Using Arrow icons instead? I'll use standard arrows */}
+              <div className="font-bold text-lg">←</div>
+            </Button>
+            <div className="text-center">
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                {format(targetDate, 'EEEE', { locale: id })}
+              </div>
+              <div className="text-lg font-black text-foreground">
+                {format(targetDate, 'dd MMMM yyyy', { locale: id })}
+              </div>
             </div>
-          ) : (
-            <AttendanceCalendar
-              currentDate={currentDate}
-              onPrevMonth={handlePrev}
-              onNextMonth={handleNext}
-              attendanceData={attendanceData || []}
-              onDateSelect={handleDateSelect}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              weekDate={weekDate}
-            />
-          )}
-        </div>
+            <Button variant="ghost" size="icon" onClick={handleNext} className="h-10 w-10 rounded-xl">
+              <div className="font-bold text-lg">→</div>
+            </Button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
@@ -123,8 +173,10 @@ export default function RecapPage() {
         {/* Detailed List */}
         <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
           <div className="p-4 border-b border-border bg-gray-50 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <h3 className="font-bold text-sm text-foreground">Detail Riwayat</h3>
+            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-bold text-sm text-foreground">
+              {reportType === 'daily' ? 'Sesi Absensi Hari Ini' : 'Detail Riwayat Bulanan'}
+            </h3>
           </div>
           <div className="divide-y divide-border">
             {filteredData.map((record) => (

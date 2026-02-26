@@ -147,6 +147,18 @@ export default function EmployeeDashboard() {
             setLocationAddress(address);
             lastLocationFetch.current = Date.now();
             return { lat: latitude, lng: longitude, address };
+        } catch (err: any) {
+            if (err.code === 1) { // PERMISSION_DENIED
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+                if (isIOS) {
+                    throw new Error("Akses lokasi ditolak. Buka Pengaturan iPhone -> Privasi -> Layanan Lokasi (Aktifkan), lalu pastikan Browser memiliki izin.");
+                } else {
+                    throw new Error("Akses lokasi ditolak. Silakan aktifkan izin lokasi di pengaturan browser atau HP Anda.");
+                }
+            } else if (err.code === 3) { // TIMEOUT
+                throw new Error("Gagal mengambil lokasi (Timeout). Pastikan Anda berada di area terbuka dan koneksi internet stabil.");
+            }
+            throw err;
         } finally {
             setProcessingLocation(false);
         }

@@ -118,20 +118,17 @@ export class DatabaseStorage implements IStorage {
     if (monthStr) {
       const [year, month] = monthStr.split('-').map(Number);
 
-      // Calculate start date: 26th of previous month
-      let startYear = year;
-      let startMonth = month - 1;
-      if (startMonth === 0) {
-        startMonth = 12;
-        startYear -= 1;
-      }
-      const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-26`;
+      // Use standard calendar month: 1st to the last day of the month
+      // We can use gte(date, 'YYYY-MM-01') and lte(date, 'YYYY-MM-31') 
+      // but a safer way is to just use string prefix matching or gte/lt
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
 
-      // Calculate end date: 25th of current month
-      const endDate = `${year}-${String(month).padStart(2, '0')}-25`;
+      // Find last day of month
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      conditions.push(gte(attendance.date, new Date(startDate)));
-      conditions.push(lte(attendance.date, new Date(endDate)));
+      conditions.push(gte(attendance.date, startDate));
+      conditions.push(lte(attendance.date, endDate));
     }
 
     return await query.where(and(...conditions)).orderBy(desc(attendance.date));
