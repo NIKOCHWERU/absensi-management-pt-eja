@@ -64,6 +64,18 @@ export function AttendanceCalendar({
     }
   };
 
+  const getStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'present': return 'Hadir';
+      case 'late': return 'Telat';
+      case 'sick': return 'Sakit';
+      case 'permission': return 'Izin';
+      case 'absent': return 'Alpa';
+      case 'cuti': return 'Cuti';
+      default: return status || '-';
+    }
+  };
+
   const handleDateClick = (day: Date, record?: Attendance) => {
     setSelectedDate(day);
     if (onDateSelect) {
@@ -149,7 +161,7 @@ export function AttendanceCalendar({
 
               {hasRecord ? (
                 <div className={`mt-2 p-1.5 rounded-md border text-[10px] font-bold truncate flex flex-col items-center gap-1 ${getStatusColor(record.status ?? undefined)}`}>
-                  <span className="uppercase">{record.status}</span>
+                  <span className="uppercase">{getStatusLabel(record.status ?? undefined)}</span>
                   <span className="font-mono text-[9px] opacity-80">
                     {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '--:--'}
                   </span>

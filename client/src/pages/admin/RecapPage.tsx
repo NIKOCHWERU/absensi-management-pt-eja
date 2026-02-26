@@ -26,7 +26,7 @@ export default function RecapPage() {
     // State for selected period (e.g., Feb 2026 means Jan 26 - Feb 25)
     // We store the "target" month (Feb 2026)
     const [targetDate, setTargetDate] = useState(new Date());
-    const [selectedLateReason, setSelectedLateReason] = useState<Attendance | null>(null);
+    const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<Attendance | null>(null);
 
     // Manual Attendance Modal State
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -122,8 +122,8 @@ export default function RecapPage() {
                 const checkInB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
                 return sortOrder === 'desc' ? checkInB - checkInA : checkInA - checkInB;
             } else {
-                const nameA = getUserName(a.userId).toLowerCase();
-                const nameB = getUserName(b.userId).toLowerCase();
+                const nameA = (getUserName(a.userId) || '').toLowerCase();
+                const nameB = (getUserName(b.userId) || '').toLowerCase();
                 if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
                 if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
 
@@ -531,15 +531,15 @@ export default function RecapPage() {
                                                                 <Edit2 className="h-3 w-3" />
                                                             </Button>
                                                         </div>
-                                                        {(row as any).lateReason && (
+                                                        {((row as any).lateReason || (row as any).checkInPhoto || (row as any).checkOutPhoto || (row as any).lateReasonPhoto) && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-auto p-0 text-[11px] text-red-600 hover:text-red-700 hover:bg-transparent justify-start font-bold uppercase tracking-tight flex items-center gap-1.5"
-                                                                onClick={() => setSelectedLateReason(row)}
+                                                                className="h-auto p-0 text-[11px] text-blue-600 hover:text-blue-700 hover:bg-transparent justify-start font-bold uppercase tracking-tight flex items-center gap-1.5"
+                                                                onClick={() => setSelectedPhotoRecord(row)}
                                                             >
-                                                                {(row as any).lateReasonPhoto ? <Camera className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}
-                                                                Lihat Alasan Telat
+                                                                <Camera className="h-3 w-3" />
+                                                                Lihat Detail Foto
                                                             </Button>
                                                         )}
                                                     </div>
@@ -561,36 +561,40 @@ export default function RecapPage() {
                 </Card>
             </main>
 
-            <Dialog open={!!selectedLateReason} onOpenChange={(open) => !open && setSelectedLateReason(null)}>
-                <DialogContent className="sm:max-w-md bg-white border-zinc-200 text-zinc-900 rounded-3xl p-6">
+            <Dialog open={!!selectedPhotoRecord} onOpenChange={(open) => !open && setSelectedPhotoRecord(null)}>
+                <DialogContent className="sm:max-w-md bg-white border-zinc-200 text-zinc-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black text-red-600 uppercase">Alasan Keterlambatan</DialogTitle>
+                        <DialogTitle className="text-xl font-black text-blue-600 uppercase">Detail Bukti & Keterangan</DialogTitle>
                         <DialogDescription className="text-zinc-500">
-                            Detail alasan yang diberikan oleh karyawan saat clock-in terlambat.
+                            Detail alasan dan bukti foto yang dikirimkan karyawan.
                         </DialogDescription>
                     </DialogHeader>
-                    {selectedLateReason && (
+                    {selectedPhotoRecord && (
                         <div className="space-y-4 mt-2">
                             <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                                 <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Karyawan</p>
-                                <p className="font-bold text-zinc-800">{getUserName(selectedLateReason.userId)}</p>
+                                <p className="font-bold text-zinc-800">{getUserName(selectedPhotoRecord.userId)}</p>
                                 <p className="text-xs text-zinc-500 font-medium">
-                                    {format(new Date(selectedLateReason.checkIn!), "HH:mm")} - {format(new Date(selectedLateReason.date), "dd MMMM yyyy", { locale: id })}
+                                    Tanggal Absen: {format(new Date(selectedPhotoRecord.date), "dd MMMM yyyy", { locale: id })}
                                 </p>
                             </div>
-                            <div className="space-y-2">
-                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Alasan</p>
-                                <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 min-h-[80px]">
-                                    <p className="text-sm text-zinc-700 leading-relaxed">{(selectedLateReason as any).lateReason}</p>
-                                </div>
-                            </div>
-                            {(selectedLateReason as any).lateReasonPhoto && (
+
+                            {/* Alasan Terlambat & Foto Alasan */}
+                            {(selectedPhotoRecord as any).lateReason && (
                                 <div className="space-y-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Foto</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Alasan Keterlambatan</p>
+                                    <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 min-h-[60px]">
+                                        <p className="text-sm text-zinc-700 leading-relaxed">{(selectedPhotoRecord as any).lateReason}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {(selectedPhotoRecord as any).lateReasonPhoto && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Terlambar (Foto)</p>
                                     <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
                                         <img
                                             src={(() => {
-                                                const p = (selectedLateReason as any).lateReasonPhoto;
+                                                const p = (selectedPhotoRecord as any).lateReasonPhoto;
                                                 if (!p) return '';
                                                 if (p.startsWith('data:')) return p;
                                                 if (!p.includes('/') && !p.includes('.') && p.length > 20)
@@ -603,12 +607,54 @@ export default function RecapPage() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Foto Masuk */}
+                            {(selectedPhotoRecord as any).checkInPhoto && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-In (Masuk)</p>
+                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                        <img
+                                            src={(() => {
+                                                const p = (selectedPhotoRecord as any).checkInPhoto;
+                                                if (!p) return '';
+                                                if (p.startsWith('data:')) return p;
+                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                return `/uploads/${p}`;
+                                            })()}
+                                            alt="Bukti Check-In"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Foto Pulang */}
+                            {(selectedPhotoRecord as any).checkOutPhoto && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-Out (Pulang)</p>
+                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                        <img
+                                            src={(() => {
+                                                const p = (selectedPhotoRecord as any).checkOutPhoto;
+                                                if (!p) return '';
+                                                if (p.startsWith('data:')) return p;
+                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                return `/uploads/${p}`;
+                                            })()}
+                                            alt="Bukti Check-Out"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     <div className="pt-4">
                         <Button
                             className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl h-12"
-                            onClick={() => setSelectedLateReason(null)}
+                            onClick={() => setSelectedPhotoRecord(null)}
                         >
                             Tutup
                         </Button>
