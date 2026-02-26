@@ -586,16 +586,16 @@ export default function RecapPage() {
                                     <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Foto</p>
                                     <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
                                         <img
-                                            src={`/uploads/${(selectedLateReason as any).lateReasonPhoto}`}
+                                            src={(() => {
+                                                const p = (selectedLateReason as any).lateReasonPhoto;
+                                                if (!p) return '';
+                                                if (p.startsWith('data:')) return p;
+                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                return `/uploads/${p}`;
+                                            })()}
                                             alt="Bukti Telat"
                                             className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                // If it's a base64 string from a failed upload or recent submission
-                                                const target = e.target as HTMLImageElement;
-                                                if (!target.src.includes('base64') && (selectedLateReason as any).lateReasonPhoto.length > 100) {
-                                                    target.src = (selectedLateReason as any).lateReasonPhoto;
-                                                }
-                                            }}
                                         />
                                     </div>
                                 </div>

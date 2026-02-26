@@ -15,6 +15,19 @@ import { CameraModal } from "@/components/CameraModal";
 import { LateReasonModal } from "@/components/LateReasonModal";
 import { WorkTimer } from "@/components/WorkTimer";
 
+// Helper: resolve photo URL — handles both local uploads and Google Drive File IDs
+function getPhotoUrl(value: string): string {
+    if (!value) return '';
+    // Base64 data URI
+    if (value.startsWith('data:')) return value;
+    // Google Drive File ID: no dots, no slashes, length > 20
+    if (!value.includes('/') && !value.includes('.') && value.length > 20) {
+        return `https://drive.google.com/thumbnail?id=${value}&sz=w800`;
+    }
+    // Local file
+    return `/uploads/${value}`;
+}
+
 // Helper component for Shift Selection Modal
 function ShiftModal({
     open,
@@ -679,18 +692,12 @@ export default function EmployeeDashboard() {
                             {(today as any).lateReasonPhoto && (
                                 <div
                                     className="mt-2 aspect-video rounded-xl overflow-hidden border border-red-200 cursor-pointer relative group"
-                                    onClick={() => setSelectedPhoto(`/uploads/${(today as any).lateReasonPhoto}`)}
+                                    onClick={() => setSelectedPhoto(getPhotoUrl((today as any).lateReasonPhoto))}
                                 >
                                     <img
-                                        src={`/uploads/${(today as any).lateReasonPhoto}`}
+                                        src={getPhotoUrl((today as any).lateReasonPhoto)}
                                         alt="Bukti Telat"
                                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            if (!target.src.includes('base64') && (today as any).lateReasonPhoto.length > 100) {
-                                                target.src = (today as any).lateReasonPhoto;
-                                            }
-                                        }}
                                     />
                                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Camera className="text-white h-6 w-6" />
