@@ -148,7 +148,7 @@ export function AttendanceCalendar({
               </div>
 
               {hasRecord ? (
-                <div className={`mt-2 p-1.5 rounded-md border text-[10px] font-bold truncate flex flex-col items-center gap-1 ${getStatusColor(record.status)}`}>
+                <div className={`mt-2 p-1.5 rounded-md border text-[10px] font-bold truncate flex flex-col items-center gap-1 ${getStatusColor(record.status ?? undefined)}`}>
                   <span className="uppercase">{record.status}</span>
                   <span className="font-mono text-[9px] opacity-80">
                     {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '--:--'}
