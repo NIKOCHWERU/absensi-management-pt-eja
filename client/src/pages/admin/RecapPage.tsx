@@ -87,11 +87,14 @@ export default function RecapPage() {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     const getUserName = (userId: number) => {
-        return users?.find(u => u.id === userId)?.fullName || "Unknown";
+        return users?.find(u => u.id === userId)?.fullName || null;
     };
 
-    // Filter Data by Date Period
+    // Filter Data by Date Period — exclude records for deleted employees
     const filteredRecords = allAttendance?.filter(att => {
+        // Skip records whose user no longer exists
+        if (!getUserName(att.userId)) return false;
+
         const attDate = new Date(att.date);
         const d = new Date(attDate);
         d.setHours(0, 0, 0, 0);
@@ -105,7 +108,7 @@ export default function RecapPage() {
     // Filter by Name & Sort
     const processedData = filteredRecords
         .filter(att => {
-            const name = getUserName(att.userId).toLowerCase();
+            const name = (getUserName(att.userId) || '').toLowerCase();
             return name.includes(searchName.toLowerCase());
         })
         .sort((a, b) => {
