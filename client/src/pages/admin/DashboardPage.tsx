@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function AdminDashboard() {
     const [, setLocation] = useLocation();
     const { logout } = useAuth();
+    const { toast } = useToast();
     const [absenceDate, setAbsenceDate] = useState(new Date().toISOString().split('T')[0]);
 
     const { data: stats } = useQuery<{ totalEmployees: number; presentToday: number }>({
@@ -108,8 +109,15 @@ export default function AdminDashboard() {
         queryKey: ["/api/admin/users"],
     });
 
-    // Recent 5 activities
-    const recentActivities = attendanceHistory?.slice(0, 5) || [];
+    // Recent activities (Live Feed) - Filter today's records and sort by latest action
+    const recentActivities = attendanceHistory?.filter(a => {
+        const now = new Date();
+        return new Date(a.date).toDateString() === now.toDateString();
+    }).sort((a, b) => {
+        const lastActionA = new Date(a.checkOut || a.breakEnd || a.breakStart || a.checkIn || a.date).getTime();
+        const lastActionB = new Date(b.checkOut || b.breakEnd || b.breakStart || b.checkIn || b.date).getTime();
+        return lastActionB - lastActionA;
+    }).slice(0, 8) || [];
 
     // Helper to get NIK
     const getUserNik = (userId: number) => {
@@ -484,6 +492,7 @@ export default function AdminDashboard() {
                                             <th className="px-4 py-3">Selesai</th>
                                             <th className="px-4 py-3">Pulang</th>
                                             <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3">Keterangan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -519,12 +528,15 @@ export default function AdminDashboard() {
                                                                         record.status === 'absent' ? 'Alpha' : record.status}
                                                     </span>
                                                 </td>
+                                                <td className="px-4 py-3 text-xs text-gray-500 italic max-w-[150px] truncate" title={record.notes || (record as any).lateReason || "-"}>
+                                                    {record.notes ? record.notes : ((record as any).lateReason ? `Telat: ${(record as any).lateReason}` : "-")}
+                                                </td>
                                             </tr>
                                         ))}
                                         {recentActivities.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                                    Belum ada data absensi.
+                                                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                                    Belum ada data absensi untuk hari ini.
                                                 </td>
                                             </tr>
                                         )}
