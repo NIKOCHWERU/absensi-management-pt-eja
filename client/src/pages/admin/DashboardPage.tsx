@@ -114,8 +114,18 @@ export default function AdminDashboard() {
         const now = new Date();
         return new Date(a.date).toDateString() === now.toDateString();
     }).sort((a, b) => {
-        const lastActionA = new Date(a.checkOut || a.breakEnd || a.breakStart || a.checkIn || a.date).getTime();
-        const lastActionB = new Date(b.checkOut || b.breakEnd || b.breakStart || b.checkIn || b.date).getTime();
+        // Find the most recent timestamp among all available fields for record A
+        const timesA = [a.checkOut, a.breakEnd, a.breakStart, a.checkIn, a.date]
+            .filter(Boolean)
+            .map(t => new Date(t!).getTime());
+        const lastActionA = Math.max(...timesA);
+
+        // Find the most recent timestamp among all available fields for record B
+        const timesB = [b.checkOut, b.breakEnd, b.breakStart, b.checkIn, b.date]
+            .filter(Boolean)
+            .map(t => new Date(t!).getTime());
+        const lastActionB = Math.max(...timesB);
+
         return lastActionB - lastActionA;
     }).slice(0, 8) || [];
 
