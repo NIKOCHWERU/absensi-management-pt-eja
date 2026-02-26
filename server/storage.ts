@@ -108,7 +108,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAttendanceHistory(userId?: number, monthStr?: string): Promise<Attendance[]> {
-    let query = db.select().from(attendance);
     const conditions = [];
 
     if (userId) {
@@ -119,8 +118,6 @@ export class DatabaseStorage implements IStorage {
       const [year, month] = monthStr.split('-').map(Number);
 
       // Use standard calendar month: 1st to the last day of the month
-      // We can use gte(date, 'YYYY-MM-01') and lte(date, 'YYYY-MM-31') 
-      // but a safer way is to just use string prefix matching or gte/lt
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
 
       // Find last day of month
@@ -131,7 +128,15 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(attendance.date, endDate));
     }
 
-    return await query.where(and(...conditions)).orderBy(desc(attendance.date));
+    // INNER JOIN with users to exclude attendance records of deleted employees
+    const results = await db
+      .select({ attendance })
+      .from(attendance)
+      .innerJoin(users, eq(attendance.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(attendance.date));
+
+    return results.map(r => r.attendance);
   }
 
   // Announcements
