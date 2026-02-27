@@ -4,7 +4,13 @@ import { differenceInMinutes } from "date-fns";
 
 export function calculateDuration(start?: string | Date | null, end?: string | Date | null): number {
     if (!start || !end) return 0;
-    const diff = differenceInMinutes(new Date(end), new Date(start));
+
+    const startDate = new Date(start);
+    startDate.setSeconds(0, 0);
+    const endDate = new Date(end);
+    endDate.setSeconds(0, 0);
+
+    const diff = differenceInMinutes(endDate, startDate);
     return diff < 0 ? diff + 1440 : diff; // 1440 minutes = 24 hours
 }
 
