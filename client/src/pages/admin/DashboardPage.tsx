@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History } from "lucide-react";
+import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info } from "lucide-react";
 import {
     BarChart,
     Bar,
@@ -29,6 +29,16 @@ import { Input } from "@/components/ui/input";
 import { api } from "@shared/routes";
 import { LeaveRequest } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogDescription,
+    DialogClose,
+} from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
     const [, setLocation] = useLocation();
@@ -219,10 +229,74 @@ export default function AdminDashboard() {
 
             {/* Main Content */}
             <main className="flex-1 p-8 overflow-auto">
-                <header className="flex justify-between items-center mb-8">
+                <header className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
                     <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-                    <div className="text-sm text-gray-500 font-medium capitalize">
-                        {format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}
+                    <div className="flex items-center gap-4">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 shadow-sm">
+                                    <Info className="w-4 h-4 mr-2" />
+                                    Tata Cara & Ketentuan Absensi
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-bold text-green-700 flex items-center gap-2">
+                                        <Info className="w-6 h-6" />
+                                        Tata Cara & Ketentuan Absensi
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        Panduan pengisian absensi agar sistem dapat merekap data dengan akurat.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-5 py-4 text-sm text-gray-700">
+                                    <div className="space-y-2">
+                                        <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
+                                            <Clock className="w-5 h-5 text-green-600" />
+                                            1. Absen Masuk & Pulang
+                                        </h4>
+                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
+                                            <li><span className="font-medium text-gray-900">Absen Masuk:</span> Wajib dilakukan saat tiba di lokasi kerja. Sistem akan mencatat detail keterlambatan.</li>
+                                            <li><span className="font-medium text-gray-900">Absen Pulang:</span> Dilakukan setelah jam kerja usai. Jangan lupa melakukan absen pulang agar tidak tercatat Alpha.</li>
+                                        </ul>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
+                                            <CalendarDays className="w-5 h-5 text-orange-500" />
+                                            2. Istirahat (Sangat Penting)
+                                        </h4>
+                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
+                                            <li><span className="font-medium text-gray-900">Mulai Istirahat:</span> Klik tombol saat waktu istirahat dimulai. Waktu kerja aktif akan dihentikan sementara.</li>
+                                            <li><span className="font-medium text-gray-900">Selesai Istirahat:</span> <span className="text-red-600 font-bold">WAJIB</span> mengklik kembali tombol setelah jam istirahat berakhir. Jika terlewat, total jam kerja Anda tidak akan dihitung secara penuh.</li>
+                                        </ul>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
+                                            <FileText className="w-5 h-5 text-blue-500" />
+                                            3. Izin / Piket Keluar
+                                        </h4>
+                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
+                                            <li>Gunakan form <strong>Piket / Keluar Sementara</strong> jika harus meninggalkan lokasi pada jam aktif di luar jam istirahat rutin.</li>
+                                            <li>Durasi izin tersebut akan dipotong secara perhitungan agar tidak terhitung jam kerja.</li>
+                                        </ul>
+                                    </div>
+                                    <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm flex items-start gap-3 mt-6 shadow-sm">
+                                        <Info className="w-5 h-5 shrink-0 mt-0.5 text-orange-500 font-bold" />
+                                        <p className="leading-relaxed">
+                                            <strong>Catatan untuk Admin:</strong> Ini adalah contoh pop-up panduan tata cara absensi. Nantinya, panduan ini akan dapat dimunculkan pula di aplikasi untuk <strong>Karyawan (User)</strong> agar mereka bisa memahami tata cara absensi sistem yang tepat.
+                                        </p>
+                                    </div>
+                                </div>
+                                <DialogFooter className="pt-2">
+                                    <DialogClose asChild>
+                                        <Button className="bg-green-600 hover:bg-green-700 text-white font-bold px-8">Mengerti</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                        <div className="text-sm text-gray-500 font-medium capitalize hidden md:block">
+                            {format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}
+                        </div>
                     </div>
                 </header>
 
