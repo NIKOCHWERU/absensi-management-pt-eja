@@ -249,7 +249,20 @@ export default function AdminDashboard() {
                                         Panduan pengisian absensi agar sistem dapat merekap data dengan akurat.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-5 py-4 text-sm text-gray-700">
+                                <div className="space-y-6 py-4 text-sm text-gray-700">
+
+                                    {/* Illustration Image / Banner */}
+                                    <div className="w-full h-44 md:h-56 rounded-xl overflow-hidden relative shadow-sm border border-gray-100">
+                                        <img
+                                            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
+                                            alt="Sistem Kerja Hybrid"
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-5">
+                                            <span className="text-white font-bold text-lg md:text-xl drop-shadow-md">Kerja Hybrid & Fleksibel</span>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-2">
                                         <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
                                             <Clock className="w-5 h-5 text-green-600" />
