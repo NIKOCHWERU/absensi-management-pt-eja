@@ -243,18 +243,18 @@ export default function AdminDashboard() {
                                 <DialogHeader>
                                     <DialogTitle className="text-xl font-bold text-green-700 flex items-center gap-2">
                                         <Info className="w-6 h-6" />
-                                        Tata Cara & Ketentuan Absensi
+                                        Tata Cara Absensi (Penting Dibaca!)
                                     </DialogTitle>
-                                    <DialogDescription>
-                                        Panduan pengisian absensi agar sistem dapat merekap data dengan akurat.
+                                    <DialogDescription className="text-gray-600 text-base">
+                                        Perhatikan gambar di bawah ini agar Bapak/Ibu tidak salah saat melakukan absensi setiap harinya.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-6 py-4 text-sm text-gray-700">
 
                                     {/* Tutorial Illustration: App UI Mockup */}
-                                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 flex flex-col items-center justify-center space-y-4 shadow-inner relative overflow-hidden">
+                                    <div className="bg-green-50/50 border border-green-100 rounded-xl p-6 flex flex-col items-center justify-center space-y-4 shadow-sm relative overflow-hidden">
                                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Simulasi Tombol di Aplikasi Anda</p>
+                                        <p className="text-sm font-bold text-gray-600 uppercase mb-2">Urutan Tombol Yang Ditekan</p>
                                         <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
                                             {/* Simulate Check In */}
                                             <div className="bg-white border-2 border-green-500 text-green-700 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
@@ -283,46 +283,48 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-3 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
                                         <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
                                             <Clock className="w-5 h-5 text-green-600" />
-                                            1. Absen Masuk & Pulang (Sistem Kerja Hybrid)
+                                            1. Cara Absen Datang & Pulang
                                         </h4>
-                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
-                                            <li><span className="font-medium text-gray-900">Multi-Sesi & Hybrid:</span> Sistem mendukung <strong>absen masuk & pulang berkali-kali</strong> dalam satu hari jika Anda bermobilitas tinggi atau kerja terpisah sesi (misal di kantor lalu dinas luar).</li>
-                                            <li><span className="font-medium text-gray-900">Absen Masuk:</span> Wajib dilakukan untuk memicu mulainya penghitungan jam kerja di sesi tersebut.</li>
-                                            <li><span className="font-medium text-gray-900">Absen Pulang:</span> Dilakukan untuk mengakhiri sesi. <span className="text-red-600 font-bold">Total jam kerja Anda dalam sehari akan otomatis diakumulasi dari seluruh sesi yang ada.</span></li>
+                                        <ul className="list-disc list-inside space-y-2 ml-2 text-gray-700 leading-relaxed">
+                                            <li><strong className="text-green-700">Saat Datang:</strong> Jangan lupa langsung tekan tombol <strong className="text-green-700 border border-green-200 bg-green-50 px-1 rounded">Absen Masuk (1)</strong> supaya sistem mulai menghitung jam kerja.</li>
+                                            <li><strong className="text-red-600">Saat Selesai Kerja:</strong> Wajib menekan tombol <strong className="text-red-600 border border-red-200 bg-red-50 px-1 rounded">Absen Pulang (4)</strong> sebelum meninggalkan tempat kerja.</li>
+                                            <li><strong className="text-blue-600">Bisa Absen Masuk Berkali-kali!</strong> Jika hari ini Bapak/Ibu harus keluar dari tempat kerja lalu kembali lagi, silakan <strong className="text-red-500 underline">Absen Pulang</strong> dulu saat pergi, dan <strong className="text-green-600 underline">Absen Masuk</strong> lagi saat sudah kembali. Jam kerja otomatis akan digabungkan.</li>
                                         </ul>
                                     </div>
-                                    <div className="space-y-2">
+
+                                    <div className="space-y-3 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
                                         <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
                                             <CalendarDays className="w-5 h-5 text-orange-500" />
-                                            2. Istirahat Wajib
+                                            2. Jika Ada Waktu Istirahat
                                         </h4>
-                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
-                                            <li>Gunakan tombol <strong>Mulai Istirahat</strong> untuk menjeda waktu aktif. Tidak perlu absen pulang.</li>
-                                            <li><span className="text-red-600 font-bold">WAJIB</span> menekan tombol <strong>Selesai Istirahat</strong> saat istirahat berakhir agar jam kerja bisa dihitung kembali dengan akurat.</li>
+                                        <ul className="list-disc list-inside space-y-2 ml-2 text-gray-700 leading-relaxed">
+                                            <li>Jika waktunya istirahat, tekan tombol <strong className="text-orange-600 border border-orange-200 bg-orange-50 px-1 rounded">Mulai Istirahat (2)</strong>. <span className="text-gray-500 italic">(Tidak perlu absen pulang)</span>.</li>
+                                            <li><strong className="text-red-600">PENTING:</strong> Setelah selesai istirahat, <strong className="text-red-600 underline">WAJIB</strong> menekan tombol <strong className="text-blue-600 border border-blue-200 bg-blue-50 px-1 rounded">Selesai Istirahat (3)</strong> agar jam kerja Bapak/Ibu kembali dihitung.</li>
                                         </ul>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-3 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
                                         <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
                                             <FileText className="w-5 h-5 text-blue-500" />
-                                            3. Ketidakhadiran (Sakit, Izin & Cuti)
+                                            3. Jika Sakit, Izin, atau Cuti
                                         </h4>
-                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
-                                            <li><span className="font-medium text-gray-900">Sakit & Berhalangan:</span> Lapor ke tim terkait dan unggah Surat Dokter apabila diperlukan, agar absen hari tersebut tercatat resmi sebagai "Sakit" atau "Izin Penuh", bukan "Alpha".</li>
-                                            <li><span className="font-medium text-gray-900">Pengajuan Cuti:</span> Ajukan jauh-jauh hari di menu "Manajemen Cuti" untuk mendapatkan persetujuan. Jika disetujui, kehadiran Anda akan otomatis dinonaktifkan di hari tersebut dengan status Cuti.</li>
-                                            <li><span className="font-medium text-gray-900">Izin Sementara (Piket Keluar):</span> Form untuk Anda yang harus meninggalkan lokasi sebentar pada jam kerja aktif. Durasi piket akan otomatis dipotong agar tidak dihitung sebagai jam kerja.</li>
+                                        <ul className="list-disc list-inside space-y-2 ml-2 text-gray-700 leading-relaxed">
+                                            <li><strong className="text-blue-700">Sakit:</strong> Harap lapor ke admin atau atasan, dan kirimkan Surat Dokter (jika ada) agar absen Bapak/Ibu ditulis "Sakit" atau "Izin", bukan "Alpha" (Tanpa Keterangan).</li>
+                                            <li><strong className="text-purple-700">Pengajuan Cuti:</strong> Silakan ajukan jauh-jauh hari lewat menu "Manajemen Cuti" atau lapor ke Atasan. Jika disetujui, kehadiran hari itu sudah otomatis dihitung Cuti.</li>
+                                            <li><strong className="text-orange-700">Izin Keluar Sebentar (Pemat):</strong> Khusus untuk Bapak/Ibu yang harus keluar kantor sebentar di jam kerja, harap hubungi Admin agar dibuatkan Surat Izin Keluar sementara. Waktu Bapak/Ibu keluar akan otomatis dipotong tanpa menghapus absensi harian.</li>
                                         </ul>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-3 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
                                         <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
-                                            <MessageSquare className="w-5 h-5 text-purple-500" />
-                                            4. Fitur Aplikasi Lainnya
+                                            <AlertCircle className="w-5 h-5 text-red-500" />
+                                            4. Catatan Penting
                                         </h4>
-                                        <ul className="list-disc list-inside space-y-1.5 ml-7 text-gray-600">
-                                            <li><span className="font-medium text-gray-900">Pengaduan / Laporan:</span> Manfaatkan form ini untuk melapor kepada Admin atau tim Management atas masalah operasional, keamanan, keluhan absensi dll. Tanggapan dapat diperiksa kembali melalui menu yang sama.</li>
-                                            <li><span className="font-medium text-gray-900">Papan Informasi Berita:</span> Pantau info rutin, panduan, atau pengumuman dari manajemen perusahaan agar tidak tertinggal info penting.</li>
+                                        <ul className="list-disc list-inside space-y-2 ml-2 text-gray-700 leading-relaxed">
+                                            <li>Pastikan lokasi HP/Komputer (*GPS*) Bapak/Ibu sudah <strong>menyala</strong> saat memencet tombol absensi.</li>
+                                            <li>Apabila Bapak/Ibu lupa absen atau ada masalah teknis (misal sinyal jelek), harap <strong>SEGERA LAPOR</strong> ke Admin agar dibantu absensinya hari itu. Jangan sampai statusnya Alpha.</li>
+                                            <li>Selalu cek <strong>"Riwayat Absensi"</strong> untuk memastikan absen hari itu sukses tersimpan.</li>
                                         </ul>
                                     </div>
                                     <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm flex items-start gap-3 mt-6 shadow-sm">

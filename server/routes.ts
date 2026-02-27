@@ -12,6 +12,7 @@ import fs from "fs";
 import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+// @ts-ignore
 import axios from "axios";
 
 declare global {
@@ -192,9 +193,9 @@ export async function registerRoutes(
 
       const attendance = await storage.createAttendance({
         userId,
-        date: today,
+        date: new Date(today),
         checkIn: now,
-        status: status,
+        status: status as any,
         checkInPhoto: photoFileId,
         checkInLocation: location,
         shift: shift,
@@ -314,8 +315,8 @@ export async function registerRoutes(
 
     const attendance = await storage.createAttendance({
       userId,
-      date: today,
-      status: type, // 'sick' or 'permission'
+      date: new Date(today),
+      status: type as any, // 'sick' or 'permission'
       notes: notes,
       checkInPhoto: photoFileId,
       checkIn: now, // Technically they "started" their day with a permit
@@ -367,9 +368,9 @@ export async function registerRoutes(
     // Create new attendance session
     const newSession = await storage.createAttendance({
       userId,
-      date: today,
+      date: new Date(today),
       checkIn: now,
-      status: status,
+      status: status as any,
       shift: 'Management',
       sessionNumber: nextSessionNumber,
       notes: `Sesi ke-${nextSessionNumber}`
@@ -382,8 +383,15 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     // Admin can see all, Employee sees only theirs
-    const userId = req.user!.role === 'admin' ? (req.query.userId ? Number(req.query.userId) : undefined) : req.user!.id;
-    const month = req.query.month as string | undefined;
+    const qUserId = req.query.userId;
+    const parsedUserId = qUserId ? Number(Array.isArray(qUserId) ? qUserId[0] : qUserId) : undefined;
+    let monthStr: string | undefined = undefined;
+    if (req.query.month) {
+      monthStr = Array.isArray(req.query.month) ? req.query.month[0] as string : req.query.month as string;
+    }
+
+    const userId = req.user!.role === 'admin' ? parsedUserId : req.user!.id;
+    const month = monthStr;
 
     const records = await storage.getAttendanceHistory(userId, month);
     res.json(records);
@@ -432,7 +440,21 @@ export async function registerRoutes(
 
   app.get(api.admin.users.list.path, async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    let roleFilter: "all" | "admin" | "employee" = "all";
+    if (req.query.role) {
+      const rVal = Array.isArray(req.query.role) ? req.query.role[0] : req.query.role;
+      // @ts-ignore
+      if (typeof rVal === 'string' && ["all", "admin", "employee"].includes(rVal)) {
+        roleFilter = rVal as "all" | "admin" | "employee";
+      }
+    }
     const users = await storage.getAllUsers();
+
+    // Filter by role if requested
+    if (roleFilter !== "all") {
+      const filteredUsers = users.filter((u: DbUser) => u.role === roleFilter);
+      return res.json(filteredUsers);
+    }
     res.json(users);
   });
 
@@ -487,7 +509,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.admin.users.update.path, async (req, res) => {
+  app.post("/api/admin/users/:id", async (req, res) => {
     try {
       if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: "Akses ditolak" });
@@ -578,7 +600,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/admin/users/:id", upload.single('photo'), async (req, res) => {
+  app.patch("/api/admin/users/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
     try {
@@ -594,13 +616,14 @@ export async function registerRoutes(
       if (updates.phoneNumber === "") updates.phoneNumber = null;
 
       // If photo is uploaded, save it locally
-      if (req.file) {
-        const filename = `emp-${id}-${Date.now()}-${req.file.originalname}`;
+      const multerReq = req as any;
+      if (multerReq.file) {
+        const filename = `emp-${id}-${Date.now()}-${multerReq.file.originalname}`;
         const empUploadsDir = path.join(uploadsDir, 'employees');
         if (!fs.existsSync(empUploadsDir)) fs.mkdirSync(empUploadsDir);
 
         const filepath = path.join(empUploadsDir, filename);
-        fs.writeFileSync(filepath, req.file.buffer);
+        fs.writeFileSync(filepath, multerReq.file.buffer);
         updates.photoUrl = `/uploads/employees/${filename}`;
       }
 
@@ -860,7 +883,7 @@ export async function registerRoutes(
 
   app.post(api.leave.cancel.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const requests = await storage.getLeaveRequestsByUser(req.user!.id);
     const request = requests.find(r => r.id === id);
 
@@ -887,7 +910,7 @@ export async function registerRoutes(
   app.patch(api.admin.attendance.leave.update.path, async (req, res) => {
     try {
       if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const { status } = req.body;
 
       console.log(`[AdminLeaveUpdate] Processing ID: ${id}, Status: ${status}`);
@@ -916,9 +939,10 @@ export async function registerRoutes(
 
           // Safety check for absolute dates to avoid timezone shifts
           // If the date is string like YYYY-MM-DD, new Date() might be UTC
-          if (typeof request.startDate === 'string' && request.startDate.includes('-')) {
+          const rawStartDate = request.startDate as unknown as string | Date;
+          if (typeof rawStartDate === 'string' && rawStartDate.includes('-')) {
             // Use UTC to avoid local timezone shifts which can change the day
-            current = new Date(request.startDate + 'T00:00:00Z');
+            current = new Date(rawStartDate + 'T00:00:00Z');
           }
 
           let safetyCounter = 0;

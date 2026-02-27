@@ -118,11 +118,11 @@ export class DatabaseStorage implements IStorage {
       const [year, month] = monthStr.split('-').map(Number);
 
       // Use standard calendar month: 1st to the last day of the month
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const startDate = new Date(`${year}-${String(month).padStart(2, '0')}-01`);
 
       // Find last day of month
       const lastDay = new Date(year, month, 0).getDate();
-      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      const endDate = new Date(`${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
 
       conditions.push(gte(attendance.date, startDate));
       conditions.push(lte(attendance.date, endDate));

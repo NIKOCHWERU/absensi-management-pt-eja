@@ -104,10 +104,10 @@ export default function InfoBoardPage() {
         }
     });
 
-    const safeFormat = (dateStr: string | null | undefined, fmt: string) => {
-        if (!dateStr) return "";
+    const safeFormat = (dateInput: string | Date | null | undefined, fmt: string) => {
+        if (!dateInput) return "";
         try {
-            const date = new Date(dateStr);
+            const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
             if (isNaN(date.getTime())) return "";
             return format(date, fmt, { locale: id });
         } catch (e) {
