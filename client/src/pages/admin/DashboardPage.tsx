@@ -251,15 +251,35 @@ export default function AdminDashboard() {
                                 </DialogHeader>
                                 <div className="space-y-6 py-4 text-sm text-gray-700">
 
-                                    {/* Illustration Image / Banner */}
-                                    <div className="w-full h-44 md:h-56 rounded-xl overflow-hidden relative shadow-sm border border-gray-100">
-                                        <img
-                                            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
-                                            alt="Sistem Kerja Hybrid"
-                                            className="w-full h-full object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-5">
-                                            <span className="text-white font-bold text-lg md:text-xl drop-shadow-md">Kerja Hybrid & Fleksibel</span>
+                                    {/* Tutorial Illustration: App UI Mockup */}
+                                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 flex flex-col items-center justify-center space-y-4 shadow-inner relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Simulasi Tombol di Aplikasi Anda</p>
+                                        <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                                            {/* Simulate Check In */}
+                                            <div className="bg-white border-2 border-green-500 text-green-700 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
+                                                <div className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md animate-pulse">#1</div>
+                                                <Clock className="w-6 h-6" />
+                                                <span className="font-bold text-xs text-center">Absen Masuk<br /><span className="text-[10px] font-normal text-gray-500">Saat tiba</span></span>
+                                            </div>
+                                            {/* Simulate Break Start */}
+                                            <div className="bg-white border-2 border-orange-400 text-orange-600 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
+                                                <div className="absolute -top-2 -right-2 bg-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">#2</div>
+                                                <CalendarDays className="w-6 h-6" />
+                                                <span className="font-bold text-xs text-center">Mulai Istirahat<br /><span className="text-[10px] font-normal text-gray-500">Jam jeda</span></span>
+                                            </div>
+                                            {/* Simulate Break End */}
+                                            <div className="bg-white border-2 border-blue-400 text-blue-600 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
+                                                <div className="absolute -top-2 -right-2 bg-blue-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">#3</div>
+                                                <CalendarDays className="w-6 h-6" />
+                                                <span className="font-bold text-xs text-center">Selesai Istirahat<br /><span className="text-[10px] font-normal text-gray-500">Kembali kerja</span></span>
+                                            </div>
+                                            {/* Simulate Check Out */}
+                                            <div className="bg-white border-2 border-red-500 text-red-600 rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-sm relative">
+                                                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">#4</div>
+                                                <LogOut className="w-6 h-6" />
+                                                <span className="font-bold text-xs text-center">Absen Pulang<br /><span className="text-[10px] font-normal text-gray-500">Selesai kerja</span></span>
+                                            </div>
                                         </div>
                                     </div>
 

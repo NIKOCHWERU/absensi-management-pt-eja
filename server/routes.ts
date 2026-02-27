@@ -12,6 +12,7 @@ import fs from "fs";
 import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import axios from "axios";
 
 declare global {
   namespace Express {
@@ -483,6 +484,44 @@ export async function registerRoutes(
         return res.status(400).json({ message: "NIK atau Username sudah digunakan" });
       }
       res.status(400).json({ message: "Gagal membuat karyawan: " + (err.message || "Internal error") });
+    }
+  });
+
+  app.post(api.admin.users.update.path, async (req, res) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Akses ditolak" });
+      }
+
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const updatedUser = await storage.updateUser(id, updateData);
+      res.json(updatedUser);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Google Drive proxy endpoint
+  app.get('/api/images/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const driveUrl = `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
+
+      const response = await axios({
+        method: 'get',
+        url: driveUrl,
+        responseType: 'stream'
+      });
+
+      // forward the content-type and stream it back
+      res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+      response.data.pipe(res);
+
+    } catch (error) {
+      console.error("Error proxying image from Drive:", error);
+      res.status(404).send("File not found");
     }
   });
 

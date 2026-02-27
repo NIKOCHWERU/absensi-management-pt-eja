@@ -671,7 +671,7 @@ export default function RecapPage() {
                                                 if (!p) return '';
                                                 if (p.startsWith('data:')) return p;
                                                 if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                    return `/api/images/${p}`;
                                                 return `/uploads/${p}`;
                                             })()}
                                             alt="Bukti Telat"
@@ -692,7 +692,7 @@ export default function RecapPage() {
                                                 if (!p) return '';
                                                 if (p.startsWith('data:')) return p;
                                                 if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                    return `/api/images/${p}`;
                                                 return `/uploads/${p}`;
                                             })()}
                                             alt="Bukti Check-In"
@@ -713,7 +713,7 @@ export default function RecapPage() {
                                                 if (!p) return '';
                                                 if (p.startsWith('data:')) return p;
                                                 if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `https://drive.google.com/thumbnail?id=${p}&sz=w800`;
+                                                    return `/api/images/${p}`;
                                                 return `/uploads/${p}`;
                                             })()}
                                             alt="Bukti Check-Out"
