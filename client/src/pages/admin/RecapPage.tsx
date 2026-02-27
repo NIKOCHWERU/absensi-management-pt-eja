@@ -159,7 +159,8 @@ export default function RecapPage() {
 
     const calculateHours = (start?: Date | string | null, end?: Date | string | null) => {
         if (!start || !end) return 0;
-        return differenceInMinutes(new Date(end), new Date(start));
+        const diff = differenceInMinutes(new Date(end), new Date(start));
+        return diff < 0 ? diff + 1440 : diff;
     };
 
     const manualMutation = useMutation({
