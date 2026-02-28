@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info } from "lucide-react";
+import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info, AlertCircle } from "lucide-react";
 import {
     BarChart,
     Bar,
