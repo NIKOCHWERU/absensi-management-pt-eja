@@ -113,11 +113,18 @@ export default function RecapPage() {
         })
         .sort((a, b) => {
             if (sortField === 'date') {
-                const timeA = new Date(a.date).getTime();
-                const timeB = new Date(b.date).getTime();
-                if (timeA !== timeB) return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+                const dateA = new Date(a.date).setHours(0, 0, 0, 0);
+                const dateB = new Date(b.date).setHours(0, 0, 0, 0);
 
-                // Secondary sort: Latest session first (DESC) or Earliest (ASC)
+                if (dateA !== dateB) return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+
+                // Secondary sort: Group by User
+                const nameA = (getUserName(a.userId) || '').toLowerCase();
+                const nameB = (getUserName(b.userId) || '').toLowerCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+
+                // Tertiary sort: Latest session first (DESC) or Earliest (ASC)
                 const checkInA = a.checkIn ? new Date(a.checkIn).getTime() : 0;
                 const checkInB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
                 return sortOrder === 'desc' ? checkInB - checkInA : checkInA - checkInB;
@@ -143,7 +150,8 @@ export default function RecapPage() {
     };
 
     // Pre-calculate daily totals for fast lookup
-    const dailyTotals = new Map<string, number>();
+    // Key: "YYYY-MM-DD-userId" -> { mins, hasAllCheckOuts }
+    const dailyTotals = new Map<string, { mins: number; complete: boolean }>();
     processedData.forEach(row => {
         const key = `${format(new Date(row.date), "yyyy-MM-dd")}-${row.userId}`;
         if (!dailyTotals.has(key)) {
@@ -152,8 +160,8 @@ export default function RecapPage() {
                 format(new Date(r.date), "yyyy-MM-dd") === format(new Date(row.date), "yyyy-MM-dd") &&
                 r.userId === row.userId
             );
-            const { netWorkMins } = calculateDailyTotal(dayRecords);
-            dailyTotals.set(key, netWorkMins);
+            const { netWorkMins, hasAllCheckOuts } = calculateDailyTotal(dayRecords);
+            dailyTotals.set(key, { mins: netWorkMins, complete: hasAllCheckOuts });
         }
     });
 
@@ -261,7 +269,9 @@ export default function RecapPage() {
             // Grouping Logic: Check if same as previous row
             const dateStr = format(new Date(row.date), "yyyy-MM-dd");
             const key = `${dateStr}-${row.userId}`;
-            const dailyTotalMins = dailyTotals.get(key) || 0;
+            const dailyEntry = dailyTotals.get(key);
+            const dailyTotalMins = dailyEntry?.mins ?? 0;
+            const dailyIsComplete = dailyEntry?.complete ?? false;
 
             const prevRow = index > 0 ? processedData[index - 1] : null;
             const isSameDayAndUser = prevRow &&
@@ -280,14 +290,16 @@ export default function RecapPage() {
                 <td class="time text-orange">${row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}</td>
                 <td class="time text-red">${row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}</td>
                 <td>
-                    ${!isSameDayAndUser ? `<div style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">Total: ${formatDuration(dailyTotalMins)}</div>` : ''}
-                    <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sesi: <span style="color: #059669;">${formatDuration(sessionNetMins)}</span></div>
+                    ${!isSameDayAndUser ? `<div style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">Total: ${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : "-"}${!row.checkOut ? ' <span style="color: #ca8a04; font-size: 10px;">(Belum Pulang)</span>' : ""}</div>` : ''}
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'};">${!row.checkOut ? "Belum Pulang" : formatDuration(sessionNetMins)}</span></div>
                 </td>
+
                 <td style="color: #ea580c; font-weight: 600; font-size: 12px; text-align: center;">${breakMins > 0 ? formatDuration(breakMins) : "-"}</td>
                 <td><span class="status-badge ${statusBadgeClass}">${displayStatus}</span></td>
                 <td style="font-size: 11px; line-height: 1.4; color: #64748b; max-width: 250px;">
-                    ${row.notes || "-"} 
+                    ${row.notes ? row.notes : (!row.checkOut ? "-" : "-")} 
                     ${row.status === 'late' && (row as any).lateReason ? `<br><span style="color: #ef4444; font-weight: 600;">[Telat: ${(row as any).lateReason}]</span>` : ""}
+                    ${!row.checkOut ? `<br><span style="color: #eab308; font-weight: 600;">[Belum Absen Pulang]</span>` : ""}
                 </td>
             </tr>
         `;
@@ -530,7 +542,6 @@ export default function RecapPage() {
                                         // Grouping Logic: Check if same as previous row
                                         const dateStr = format(new Date(row.date), "yyyy-MM-dd");
                                         const key = `${dateStr}-${row.userId}`;
-                                        const dailyTotalMins = dailyTotals.get(key) || 0;
 
                                         const prevRow = index > 0 ? processedData[index - 1] : null;
                                         const isSameDayAndUser = prevRow &&
@@ -562,13 +573,18 @@ export default function RecapPage() {
                                                     {row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {!isSameDayAndUser && (
-                                                        <div className="text-gray-900 font-bold mb-1">
-                                                            Total: {formatDuration(dailyTotalMins)}
-                                                        </div>
-                                                    )}
+                                                    {!isSameDayAndUser && (() => {
+                                                        const daily = dailyTotals.get(key);
+                                                        const showTotal = daily?.complete && (daily?.mins ?? 0) > 0;
+                                                        return (
+                                                            <div className="text-gray-900 font-bold mb-1">
+                                                                Total: {showTotal ? formatDuration(daily!.mins) : "-"}
+                                                                {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Pulang)</span>}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     <div className="text-xs text-gray-500">
-                                                        Sesi: {formatDuration(sessionNetMins)}
+                                                        Sesi: {!row.checkOut ? <span className="text-yellow-600 font-semibold">Belum Pulang</span> : formatDuration(sessionNetMins)}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">
@@ -594,7 +610,9 @@ export default function RecapPage() {
                                                 <td className="px-4 py-3 text-gray-500 italic max-w-xs">
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span>{row.notes || "-"}</span>
+                                                            <span className={!row.checkOut ? "text-yellow-600 font-semibold" : ""}>
+                                                                {row.notes ? row.notes : (!row.checkOut ? "Belum Absen Pulang" : "-")}
+                                                            </span>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"

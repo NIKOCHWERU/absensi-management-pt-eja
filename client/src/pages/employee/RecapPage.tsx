@@ -305,10 +305,12 @@ export default function RecapPage() {
                 </div>
               </div>
 
-              {selectedRecord.notes && (
+              {(selectedRecord.notes || !selectedRecord.checkOut) && (
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mt-4">
                   <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Catatan / Keterangan</p>
-                  <p className="text-sm text-gray-700 italic">{selectedRecord.notes}</p>
+                  <p className={`text-sm italic ${!selectedRecord.checkOut && !selectedRecord.notes ? 'text-yellow-600 font-semibold' : 'text-gray-700'}`}>
+                    {selectedRecord.notes || 'Belum Absen Pulang'}
+                  </p>
                 </div>
               )}
 

@@ -25,35 +25,39 @@ export function calculateDailyTotal(records: Attendance[]): {
     totalWorkMins: number;
     totalBreakMins: number;
     netWorkMins: number;
+    hasAllCheckOuts: boolean;
 } {
     let totalWorkMins = 0;
     let totalBreakMins = 0;
+    // A session is only "countable" if both checkIn AND checkOut exist
+    let hasAllCheckOuts = true;
 
     records.forEach(record => {
-        // Basic session duration
+        // Only count work time if the session is complete (has both checkIn and checkOut)
+        if (!record.checkOut) {
+            hasAllCheckOuts = false;
+            return; // Skip incomplete sessions entirely
+        }
+
         let sessionWork = calculateDuration(record.checkIn, record.checkOut);
 
-        // Adjust for permit if exists (assuming permitExitAt/ResumeAt are in schema, otherwise ignoring)
-        // The schema has permitExitAt/ResumeAt.
+        // Adjust for permit if exists
         if (record.permitExitAt && record.permitResumeAt) {
             const permitMins = calculateDuration(record.permitExitAt, record.permitResumeAt);
             sessionWork = Math.max(0, sessionWork - permitMins);
         }
 
-        const sessionBreak = calculateDuration(record.breakStart, record.breakEnd);
-
         totalWorkMins += sessionWork;
-        totalBreakMins += sessionBreak;
+
+        // Only count break duration if BOTH breakStart AND breakEnd exist
+        if (record.breakStart && record.breakEnd) {
+            const sessionBreak = calculateDuration(record.breakStart, record.breakEnd);
+            totalBreakMins += sessionBreak;
+        }
     });
 
-    // Net work is raw work duration minus break duration
-    // Wait, usually checkIn to checkOut includes break? 
-    // If system logs breakStart/End separately, does checkOut time change?
-    // Usually: Work = (CheckOut - CheckIn) - BreakDuration.
-    // Unless checkOut is "effective" checkout. 
-    // Let's assume standard: Total Time = CheckOut - CheckIn. Net Work = Total Time - Break.
-
+    // Net work = total work time minus break time (break is part of work period)
     const netWorkMins = Math.max(0, totalWorkMins - totalBreakMins);
 
-    return { totalWorkMins, totalBreakMins, netWorkMins };
+    return { totalWorkMins, totalBreakMins, netWorkMins, hasAllCheckOuts };
 }

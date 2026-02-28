@@ -12,8 +12,8 @@ import fs from "fs";
 import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-// @ts-ignore
-import axios from "axios";
+import https from "https";
+import http from "http";
 
 declare global {
   namespace Express {
@@ -525,26 +525,31 @@ export async function registerRoutes(
     }
   });
 
-  // Google Drive proxy endpoint
-  app.get('/api/images/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const driveUrl = `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
+  // Google Drive proxy endpoint (uses native Node.js https - no external deps required)
+  app.get('/api/images/:id', (req, res) => {
+    const { id } = req.params;
+    const driveUrl = `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
 
-      const response = await axios({
-        method: 'get',
-        url: driveUrl,
-        responseType: 'stream'
+    const handleRequest = (url: string, redirectCount = 0) => {
+      if (redirectCount > 5) {
+        res.status(500).send("Too many redirects");
+        return;
+      }
+      const mod = url.startsWith('https') ? https : http;
+      mod.get(url, (proxyRes) => {
+        // Follow redirects
+        if ((proxyRes.statusCode === 301 || proxyRes.statusCode === 302) && proxyRes.headers.location) {
+          return handleRequest(proxyRes.headers.location, redirectCount + 1);
+        }
+        res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'image/jpeg');
+        proxyRes.pipe(res);
+      }).on('error', (err) => {
+        console.error("Error proxying image from Drive:", err);
+        res.status(404).send("File not found");
       });
+    };
 
-      // forward the content-type and stream it back
-      res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
-      response.data.pipe(res);
-
-    } catch (error) {
-      console.error("Error proxying image from Drive:", error);
-      res.status(404).send("File not found");
-    }
+    handleRequest(driveUrl);
   });
 
   app.delete("/api/admin/users/:id", async (req, res) => {

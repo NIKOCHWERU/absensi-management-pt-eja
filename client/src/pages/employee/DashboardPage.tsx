@@ -20,9 +20,9 @@ function getPhotoUrl(value: string): string {
     if (!value) return '';
     // Base64 data URI
     if (value.startsWith('data:')) return value;
-    // Google Drive File ID: no dots, no slashes, length > 20
+    // Google Drive File ID: no dots, no slashes, length > 20 — use server proxy to avoid CORS/auth issues
     if (!value.includes('/') && !value.includes('.') && value.length > 20) {
-        return `https://drive.google.com/thumbnail?id=${value}&sz=w800`;
+        return `/api/images/${value}`;
     }
     // Local file
     return `/uploads/${value}`;
@@ -650,6 +650,39 @@ export default function EmployeeDashboard() {
                     className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4"
                 >
                     <h4 className="font-bold text-gray-800 border-b pb-2">Riwayat Hari Ini</h4>
+
+                    {/* ⚠️ Warning: Sedang istirahat belum selesai */}
+                    {isBreak && !hasBreakEnded && (
+                        <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-3">
+                            <span className="text-orange-500 text-lg leading-none mt-0.5">⏳</span>
+                            <div>
+                                <p className="text-xs font-bold text-orange-700 uppercase tracking-wide">Sedang Istirahat</p>
+                                <p className="text-sm text-orange-600 font-medium mt-0.5">Jangan lupa tekan <strong>Selesai Istirahat</strong> saat kembali bekerja!</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ⚠️ Warning: Sudah check-in & selesai istirahat, belum absen pulang */}
+                    {hasCheckedIn && hasBreakEnded && !hasCheckedOut && (
+                        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+                            <span className="text-red-500 text-lg leading-none mt-0.5">🔔</span>
+                            <div>
+                                <p className="text-xs font-bold text-red-700 uppercase tracking-wide">Jangan Lupa Absen Pulang!</p>
+                                <p className="text-sm text-red-600 font-medium mt-0.5">Tekan <strong>Absen Pulang</strong> sebelum meninggalkan tempat kerja agar jam kerja tercatat.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ⚠️ Warning: Sudah check-in, belum mulai istirahat, belum pulang */}
+                    {hasCheckedIn && !isBreak && !hasBreakEnded && !hasCheckedOut && (
+                        <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                            <span className="text-blue-500 text-lg leading-none mt-0.5">💡</span>
+                            <div>
+                                <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Sedang Bekerja</p>
+                                <p className="text-sm text-blue-600 font-medium mt-0.5">Jika ingin istirahat tekan <strong>Mulai Istirahat</strong>. Jangan lupa <strong>Absen Pulang</strong> saat selesai bekerja.</p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-y-4">
                         <div>
