@@ -388,21 +388,52 @@ export default function EmployeeDashboard() {
     };
 
     const renderMainButton = () => {
+        // --- PERMIT / SICK STATE ---
+        // After permit or sick is submitted, today always has checkOut set (server always closes session).
+        // Show an informational card + "Lanjut Bekerja" option.
         if (today?.status === 'sick' || today?.status === 'permission') {
+            const permitLabel = today.status === 'sick' ? 'Sakit' : 'Izin';
+            const permitColor = today.status === 'sick' ? 'blue' : 'purple';
             return (
-                <Button
-                    onClick={handleResumeWork}
-                    className="w-full h-14 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold shadow-blue-200 shadow-lg text-lg animate-pulse"
-                >
-                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
-                        <>
-                            <Zap className="mr-2 h-5 w-5" />
-                            Masuk Kerja
-                        </>
+                <div className="flex flex-col gap-3 w-full">
+                    {/* Info card */}
+                    <div className={`rounded-2xl p-4 bg-${permitColor}-50 border border-${permitColor}-200 flex items-start gap-3`}>
+                        <span className={`text-${permitColor}-500 text-2xl leading-none mt-0.5`}>
+                            {today.status === 'sick' ? '🤒' : '📋'}
+                        </span>
+                        <div>
+                            <p className={`text-xs font-bold text-${permitColor}-700 uppercase tracking-wide`}>
+                                Status: {permitLabel}
+                            </p>
+                            <p className={`text-sm text-${permitColor}-600 font-medium mt-0.5`}>
+                                {today.notes || `Absensi ${permitLabel} hari ini sudah tercatat.`}
+                            </p>
+                            <p className={`text-xs text-${permitColor}-400 mt-1`}>
+                                Jika sudah siap, Anda dapat melanjutkan bekerja di bawah ini.
+                            </p>
+                        </div>
+                    </div>
+                    {/* Lanjut Bekerja button — uses clockIn flow (photo + shift) */}
+                    <Button
+                        onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)}
+                        disabled={isLoading || sessionCount >= 5}
+                        className="w-full h-14 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold shadow-blue-200 shadow-lg text-lg"
+                    >
+                        {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                            <>
+                                <Zap className="mr-2 h-5 w-5" />
+                                Lanjut Bekerja {sessionCount > 0 ? `(Sesi ${sessionCount + 1}/5)` : ''}
+                            </>
+                        )}
+                    </Button>
+                    {sessionCount >= 5 && (
+                        <p className="text-center text-xs text-red-500 font-medium">Batas 5 sesi per hari tercapai</p>
                     )}
-                </Button>
+                </div>
             );
         }
+
+        // --- SESSION COMPLETE (normal clock-out) ---
         if (today?.checkOut) {
             return (
                 <div className="flex flex-col gap-3 w-full">
@@ -431,6 +462,7 @@ export default function EmployeeDashboard() {
             );
         }
 
+        // --- NOT YET CLOCKED IN ---
         if (!hasCheckedIn) {
             return (
                 <Button
@@ -448,6 +480,7 @@ export default function EmployeeDashboard() {
             );
         }
 
+        // --- IN PROGRESS: waiting for break start ---
         if (!isBreak && !hasBreakEnded) {
             return (
                 <Button
@@ -465,6 +498,7 @@ export default function EmployeeDashboard() {
             );
         }
 
+        // --- IN BREAK: waiting for break end ---
         if (isBreak && !hasBreakEnded) {
             return (
                 <Button
@@ -482,6 +516,7 @@ export default function EmployeeDashboard() {
             );
         }
 
+        // --- READY TO CLOCK OUT ---
         if (hasCheckedIn && hasBreakEnded && !hasCheckedOut) {
             return (
                 <Button
@@ -797,7 +832,7 @@ export default function EmployeeDashboard() {
                 <DialogContent className="rounded-3xl max-w-xs md:max-w-md p-6">
                     <DialogHeader>
                         <DialogTitle className="text-center text-xl font-bold">
-                            {permitType === 'sick' ? 'Form Sakit' : 'Form Izin'}
+                            {permitType === 'sick' ? '🤒 Form Sakit' : '📋 Form Izin'}
                         </DialogTitle>
                         <DialogDescription className="text-center text-sm text-muted-foreground">
                             Silakan isi form di bawah ini untuk mengajukan {permitType === 'sick' ? 'sakit' : 'izin'}.
@@ -811,21 +846,42 @@ export default function EmployeeDashboard() {
                             className="resize-none rounded-2xl border-gray-200 focus:border-primary min-h-[100px]"
                         />
 
-                        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-                            <p className="text-[10px] font-bold text-orange-700 uppercase mb-2">Penting:</p>
-                            <ul className="text-[11px] text-orange-600/80 space-y-1">
-                                <li className="flex gap-2"><span>•</span> <span>Sistem akan mengambil foto wajah/dokumen.</span></li>
-                                <li className="flex gap-2"><span>•</span> <span>Pastikan GPS aktif untuk mencatat lokasi.</span></li>
-                                <li className="flex gap-2"><span>•</span> <span>Sesi kerja Anda akan berakhir setelah ini.</span></li>
-                            </ul>
-                        </div>
+                        {/* Contextual state warning */}
+                        {isBreak && !hasBreakEnded ? (
+                            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200">
+                                <p className="text-[10px] font-bold text-orange-700 uppercase mb-2">⚠️ Anda Sedang Istirahat</p>
+                                <ul className="text-[11px] text-orange-700 space-y-1">
+                                    <li className="flex gap-2"><span>•</span><span>Jam istirahat akan <strong>ditutup otomatis</strong>.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Jam kerja yang sudah berlangsung <strong>tetap dihitung</strong>.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Anda dapat <strong>Lanjut Bekerja</strong> kapan saja setelah ini.</span></li>
+                                </ul>
+                            </div>
+                        ) : hasCheckedIn && !hasCheckedOut ? (
+                            <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-200">
+                                <p className="text-[10px] font-bold text-yellow-700 uppercase mb-2">⚠️ Anda Sedang Bekerja</p>
+                                <ul className="text-[11px] text-yellow-700 space-y-1">
+                                    <li className="flex gap-2"><span>•</span><span>Sesi kerja Anda akan <strong>dihentikan</strong> sekarang.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Jam kerja yang sudah berlangsung <strong>tetap dihitung</strong>.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Anda dapat <strong>Lanjut Bekerja</strong> kapan saja setelah ini.</span></li>
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                                <p className="text-[10px] font-bold text-blue-700 uppercase mb-2">ℹ️ Sebelum Mulai Kerja</p>
+                                <ul className="text-[11px] text-blue-600/80 space-y-1">
+                                    <li className="flex gap-2"><span>•</span><span>Absensi {permitType === 'sick' ? 'Sakit' : 'Izin'} akan dicatat untuk hari ini.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Anda tetap dapat <strong>Lanjut Bekerja</strong> kapan saja hari ini.</span></li>
+                                    <li className="flex gap-2"><span>•</span><span>Sistem akan mengambil foto dan mencatat lokasi.</span></li>
+                                </ul>
+                            </div>
+                        )}
 
                         <Button
                             onClick={handlePermitCameraTrigger}
                             className="w-full h-14 rounded-2xl gap-3 bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20"
                         >
                             <Camera className="w-5 h-5" />
-                            Ambil Foto & Kirim
+                            Ambil Foto &amp; Kirim
                         </Button>
 
                         <Button
@@ -838,6 +894,7 @@ export default function EmployeeDashboard() {
                     </div>
                 </DialogContent>
             </Dialog>
+
         </div>
     );
 }

@@ -293,33 +293,67 @@ export async function registerRoutes(
     const { notes, type } = req.body;
     const today = getJakartaDate();
     const userId = req.user!.id;
+    const labelType = type === 'sick' ? 'Sakit' : 'Izin';
 
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
+    // Get ALL sessions today to find the ACTIVE one (not checked-out)
+    const allSessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+    const activeSession = allSessions.find(s => !s.checkOut);
 
-    // Upload photo if provided
+    // Upload photo
     const photoFileId = await handlePhotoUpload(req, 'clockIn');
     const now = new Date();
 
-    if (existing) {
-      // If already working, this is "Early Exit" or partial day permit
-      // We mark session as finished (checkOut) and update status
-      const attendance = await storage.updateAttendance(existing.id, {
+    if (activeSession) {
+      // Employee is currently working (or on break) — close the session
+
+      // Determine what states the employee was in for context notes
+      const wasOnBreak = !!(activeSession.breakStart && !activeSession.breakEnd);
+      const wasWorking = !!activeSession.checkIn;
+
+      // Build contextual notes
+      const stateLabel = wasOnBreak
+        ? '(saat istirahat)'
+        : wasWorking
+          ? '(saat bekerja)'
+          : '';
+
+      const contextNote = notes
+        ? `[${labelType} ${stateLabel}] ${notes}`
+        : `${labelType} ${stateLabel} - sesi dihentikan, dapat dilanjutkan kembali`;
+
+      // Build update payload
+      const updatePayload: any = {
         status: type,
-        notes: notes,
+        notes: contextNote,
         checkOut: now,
         checkOutPhoto: photoFileId,
-        permitExitAt: now, // Record when the permit started mid-day
-      });
+        permitExitAt: now,
+      };
+
+      // Auto-close break if employee was on break when permit submitted
+      if (wasOnBreak) {
+        updatePayload.breakEnd = now;
+      }
+
+      const attendance = await storage.updateAttendance(activeSession.id, updatePayload);
       return res.json(attendance);
     }
+
+    // No active session — permit submitted before starting work
+    // Create a CLOSED permit record (checkIn = checkOut = now) so resume works
+    const contextNote = notes
+      ? `[${labelType} sebelum kerja] ${notes}`
+      : `${labelType} - tidak masuk kerja`;
 
     const attendance = await storage.createAttendance({
       userId,
       date: new Date(today),
-      status: type as any, // 'sick' or 'permission'
-      notes: notes,
+      status: type as any,
+      notes: contextNote,
       checkInPhoto: photoFileId,
-      checkIn: now, // Technically they "started" their day with a permit
+      checkIn: now,
+      checkOut: now, // immediately closed — no actual work done
+      sessionNumber: allSessions.length + 1,
     });
 
     res.json(attendance);
