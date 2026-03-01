@@ -290,8 +290,8 @@ export default function RecapPage() {
                 <td class="time text-orange">${row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}</td>
                 <td class="time text-red">${row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}</td>
                 <td>
-                    ${!isSameDayAndUser ? `<div style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">Total: ${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : "-"}${!row.checkOut ? ' <span style="color: #ca8a04; font-size: 10px;">(Belum Pulang)</span>' : ""}</div>` : ''}
-                    <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'};">${!row.checkOut ? "Belum Pulang" : formatDuration(sessionNetMins)}</span></div>
+                    ${!isSameDayAndUser ? `<div style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">Total: ${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : "-"}${!row.checkOut ? ' <span style="color: #ca8a04; font-size: 10px;">(Belum Absen Pulang)</span>' : ""}</div>` : ''}
+                    <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'};">${!row.checkOut ? "Belum Absen Pulang" : formatDuration(sessionNetMins)}</span></div>
                 </td>
 
                 <td style="color: #ea580c; font-weight: 600; font-size: 12px; text-align: center;">${breakMins > 0 ? formatDuration(breakMins) : "-"}</td>
@@ -579,12 +579,12 @@ export default function RecapPage() {
                                                         return (
                                                             <div className="text-gray-900 font-bold mb-1">
                                                                 Total: {showTotal ? formatDuration(daily!.mins) : "-"}
-                                                                {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Pulang)</span>}
+                                                                {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Absen Pulang)</span>}
                                                             </div>
                                                         );
                                                     })()}
                                                     <div className="text-xs text-gray-500">
-                                                        Sesi: {!row.checkOut ? <span className="text-yellow-600 font-semibold">Belum Pulang</span> : formatDuration(sessionNetMins)}
+                                                        Sesi: {!row.checkOut ? <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span> : formatDuration(sessionNetMins)}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">
