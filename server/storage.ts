@@ -107,6 +107,10 @@ export class DatabaseStorage implements IStorage {
     return record!;
   }
 
+  async deleteAttendance(id: number): Promise<void> {
+    await db.delete(attendance).where(eq(attendance.id, id));
+  }
+
   async getAttendanceHistory(userId?: number, monthStr?: string): Promise<Attendance[]> {
     const conditions = [];
 
@@ -287,6 +291,7 @@ export interface IStorage {
   getAttendanceByUserAndDate(userId: number, date: string): Promise<Attendance | undefined>;
   getAttendanceSessionsByUserAndDate(userId: number, date: string): Promise<Attendance[]>;
   updateAttendance(id: number, updates: Partial<Attendance>): Promise<Attendance>;
+  deleteAttendance(id: number): Promise<void>;
   getAttendanceHistory(userId?: number, monthStr?: string): Promise<Attendance[]>;
 
   // Announcement methods

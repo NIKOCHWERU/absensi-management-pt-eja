@@ -1026,5 +1026,82 @@ export async function registerRoutes(
     }
   });
 
+  // --- Admin Attendance CRUD ---
+
+  // POST: Create manual attendance record
+  app.post(api.admin.attendance.manual.path, async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    const { userId, date, status, notes, shift, checkIn, checkOut, breakStart, breakEnd } = req.body;
+    if (!userId || !date) return res.status(400).json({ message: "userId dan date wajib diisi" });
+
+    const toDate = (dateStr: string | undefined, timeStr: string | undefined): Date | undefined => {
+      if (!timeStr) return undefined;
+      return new Date(`${dateStr}T${timeStr}:00+07:00`);
+    };
+
+    try {
+      // Check for existing session count
+      const existing = await storage.getAttendanceSessionsByUserAndDate(userId, date);
+      const sessionNumber = existing.length + 1;
+
+      const record = await storage.createAttendance({
+        userId: parseInt(userId),
+        date: new Date(date + 'T00:00:00+07:00'),
+        status: status || 'present',
+        notes: notes || null,
+        shift: shift || 'Management',
+        sessionNumber,
+        checkIn: toDate(date, checkIn) || new Date(date + 'T00:00:00+07:00'),
+        checkOut: toDate(date, checkOut) || null,
+        breakStart: toDate(date, breakStart) || null,
+        breakEnd: toDate(date, breakEnd) || null,
+      });
+      res.json(record);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // PUT: Edit existing attendance record (admin override)
+  app.put('/api/admin/attendance/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    const id = parseInt(req.params.id);
+    const { status, notes, checkIn, checkOut, breakStart, breakEnd, date } = req.body;
+
+    const toDate = (dateStr: string | undefined, timeStr: string | undefined): Date | null => {
+      if (!timeStr || timeStr.trim() === '') return null;
+      return new Date(`${dateStr}T${timeStr}:00+07:00`);
+    };
+
+    try {
+      const updated = await storage.updateAttendance(id, {
+        status: status || undefined,
+        notes: notes || null,
+        checkIn: checkIn ? new Date(`${date}T${checkIn}:00+07:00`) : undefined,
+        checkOut: toDate(date, checkOut),
+        breakStart: toDate(date, breakStart),
+        breakEnd: toDate(date, breakEnd),
+      });
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  // DELETE: Remove an attendance record
+  app.delete('/api/admin/attendance/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    const id = parseInt(req.params.id);
+    try {
+      await storage.deleteAttendance(id);
+      res.sendStatus(204);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
   return httpServer;
 }

@@ -1,6 +1,6 @@
 
 import { Attendance } from "@shared/schema";
-import { differenceInMinutes } from "date-fns";
+import { differenceInMinutes, differenceInSeconds } from "date-fns";
 
 export function calculateDuration(start?: string | Date | null, end?: string | Date | null): number {
     if (!start || !end) return 0;
@@ -18,6 +18,24 @@ export function formatDuration(minutes: number): string {
     if (minutes <= 0) return "-";
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
+    return `${h}j ${m}m`;
+}
+
+// Returns total seconds (for break display where sub-minute matters)
+export function calculateDurationSeconds(start?: string | Date | null, end?: string | Date | null): number {
+    if (!start || !end) return 0;
+    const diff = differenceInSeconds(new Date(end), new Date(start));
+    return diff < 0 ? diff + 86400 : diff;
+}
+
+// Formats seconds: "Xj Ym" for >= 60s, "Z detik" for < 60s
+export function formatDurationFull(seconds: number): string {
+    if (seconds <= 0) return "-";
+    if (seconds < 60) return `${seconds} detik`;
+    const mins = Math.floor(seconds / 60);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h === 0) return `${m}m`;
     return `${h}j ${m}m`;
 }
 

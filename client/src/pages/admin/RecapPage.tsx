@@ -6,11 +6,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, MessageSquare, Plus, Edit2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, MessageSquare, Plus, Edit2, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { differenceInMinutes } from "date-fns";
-import { calculateDailyTotal, formatDuration } from "@/lib/attendance";
+import { calculateDailyTotal, formatDuration, calculateDurationSeconds, formatDurationFull } from "@/lib/attendance";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import { api } from "@shared/routes";
@@ -27,6 +27,7 @@ export default function RecapPage() {
     // We store the "target" month (Feb 2026)
     const [targetDate, setTargetDate] = useState(new Date());
     const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<Attendance | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
     // Manual Attendance Modal State
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -34,6 +35,10 @@ export default function RecapPage() {
     const [manualEntry, setManualEntry] = useState({
         userId: "",
         date: format(new Date(), "yyyy-MM-dd"),
+        checkIn: "",
+        checkOut: "",
+        breakStart: "",
+        breakEnd: "",
         status: "present",
         notes: "",
         shift: "Management"
@@ -179,12 +184,15 @@ export default function RecapPage() {
 
     const manualMutation = useMutation({
         mutationFn: async (data: any) => {
-            const res = await fetch(api.admin.attendance.manual.path, {
-                method: 'POST',
+            const isEdit = !!editingAttendance?.id;
+            const url = isEdit ? `/api/admin/attendance/${editingAttendance!.id}` : api.admin.attendance.manual.path;
+            const method = isEdit ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error("Gagal menyimpan data");
+            if (!res.ok) throw new Error(await res.text() || "Gagal menyimpan data");
             return res.json();
         },
         onSuccess: () => {
@@ -205,12 +213,32 @@ export default function RecapPage() {
         }
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`/api/admin/attendance/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error("Gagal menghapus data");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+            setDeleteConfirmId(null);
+            toast({ title: "Dihapus", description: "Data absensi berhasil dihapus." });
+        },
+        onError: (err: any) => {
+            toast({ title: "Gagal", description: err.message, variant: "destructive" });
+        }
+    });
+
     const handleOpenManualModal = (existing?: Attendance) => {
         if (existing) {
             setEditingAttendance(existing);
+            const toTime = (d: string | Date | null | undefined) => d ? format(new Date(d), "HH:mm") : "";
             setManualEntry({
                 userId: String(existing.userId),
                 date: format(new Date(existing.date), "yyyy-MM-dd"),
+                checkIn: toTime(existing.checkIn),
+                checkOut: toTime(existing.checkOut),
+                breakStart: toTime(existing.breakStart),
+                breakEnd: toTime(existing.breakEnd),
                 status: existing.status || "present",
                 notes: existing.notes || "",
                 shift: existing.shift || "Management"
@@ -220,6 +248,10 @@ export default function RecapPage() {
             setManualEntry({
                 userId: "",
                 date: format(new Date(), "yyyy-MM-dd"),
+                checkIn: "",
+                checkOut: "",
+                breakStart: "",
+                breakEnd: "",
                 status: "present",
                 notes: "",
                 shift: "Management"
@@ -588,7 +620,10 @@ export default function RecapPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">
-                                                    {sessionBreakMins > 0 ? formatDuration(sessionBreakMins) : "-"}
+                                                    {(() => {
+                                                        const secs = calculateDurationSeconds(row.breakStart, row.breakEnd);
+                                                        return secs > 0 ? formatDurationFull(secs) : "-";
+                                                    })()}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold
@@ -609,7 +644,7 @@ export default function RecapPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-500 italic max-w-xs">
                                                     <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-1">
                                                             <span className={!row.checkOut ? "text-yellow-600 font-semibold" : ""}>
                                                                 {row.notes ? row.notes : (!row.checkOut ? "Belum Absen Pulang" : "-")}
                                                             </span>
@@ -620,6 +655,14 @@ export default function RecapPage() {
                                                                 onClick={() => handleOpenManualModal(row)}
                                                             >
                                                                 <Edit2 className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-gray-400 hover:text-red-600"
+                                                                onClick={() => setDeleteConfirmId(row.id)}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
                                                             </Button>
                                                         </div>
                                                         {((row as any).lateReason || (row as any).checkInPhoto || (row as any).checkOutPhoto || (row as any).lateReasonPhoto) && (
@@ -754,7 +797,7 @@ export default function RecapPage() {
             </Dialog>
 
             <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-white rounded-3xl p-6">
+                <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-gray-900">
                             {editingAttendance ? "Edit Data Absensi" : "Input Absensi Manual"}
@@ -812,6 +855,48 @@ export default function RecapPage() {
                             </div>
                         </div>
 
+                        {/* Time fields */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Jam Masuk</Label>
+                                <Input
+                                    type="time"
+                                    value={manualEntry.checkIn}
+                                    onChange={(e) => setManualEntry(prev => ({ ...prev, checkIn: e.target.value }))}
+                                    className="rounded-xl border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Jam Pulang</Label>
+                                <Input
+                                    type="time"
+                                    value={manualEntry.checkOut}
+                                    onChange={(e) => setManualEntry(prev => ({ ...prev, checkOut: e.target.value }))}
+                                    className="rounded-xl border-gray-200"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Mulai Istirahat</Label>
+                                <Input
+                                    type="time"
+                                    value={manualEntry.breakStart}
+                                    onChange={(e) => setManualEntry(prev => ({ ...prev, breakStart: e.target.value }))}
+                                    className="rounded-xl border-gray-200"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Selesai Istirahat</Label>
+                                <Input
+                                    type="time"
+                                    value={manualEntry.breakEnd}
+                                    onChange={(e) => setManualEntry(prev => ({ ...prev, breakEnd: e.target.value }))}
+                                    className="rounded-xl border-gray-200"
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label>Status Kehadiran</Label>
                             <Select
@@ -838,7 +923,7 @@ export default function RecapPage() {
                                 placeholder="Masukkan alasan atau catatan..."
                                 value={manualEntry.notes}
                                 onChange={(e) => setManualEntry(prev => ({ ...prev, notes: e.target.value }))}
-                                className="rounded-xl border-gray-200 resize-none h-24"
+                                className="rounded-xl border-gray-200 resize-none h-20"
                             />
                         </div>
                     </div>
@@ -852,12 +937,37 @@ export default function RecapPage() {
                                 if (!manualEntry.userId) return toast({ title: "Error", description: "Pilih karyawan terlebih dahulu", variant: "destructive" });
                                 manualMutation.mutate({
                                     ...manualEntry,
-                                    userId: parseInt(manualEntry.userId)
+                                    userId: parseInt(manualEntry.userId),
+                                    date: manualEntry.date,
                                 });
                             }}
                             disabled={manualMutation.isPending}
                         >
                             {manualMutation.isPending ? "Menyimpan..." : "Simpan Data"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+                <DialogContent className="sm:max-w-xs bg-white rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-red-600">Hapus Data Absensi?</DialogTitle>
+                        <DialogDescription>
+                            Data absensi ini akan dihapus permanen dan tidak bisa dikembalikan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setDeleteConfirmId(null)}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl h-11 font-bold"
+                            onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
+                            disabled={deleteMutation.isPending}
+                        >
+                            {deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus"}
                         </Button>
                     </div>
                 </DialogContent>
