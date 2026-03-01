@@ -272,14 +272,7 @@ export default function RecapPage() {
         if (!printWindow) return;
 
         const tableRows = processedData.map((row, index) => {
-            let workMins = calculateHours(row.checkIn, row.checkOut);
-            if ((row as any).permitExitAt && (row as any).permitResumeAt) {
-                const permitMins = calculateHours((row as any).permitExitAt, (row as any).permitResumeAt);
-                workMins = Math.max(0, workMins - permitMins);
-            }
             const breakMins = calculateHours(row.breakStart, row.breakEnd);
-            const netMins = Math.max(0, workMins - breakMins);
-
             const { netWorkMins: sessionNetMins } = calculateDailyTotal([row]);
 
             const rawStatus = row.status || 'present';
@@ -298,7 +291,6 @@ export default function RecapPage() {
                                 row.status === 'absent' ? 'Alpha' : row.status) +
                 ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '');
 
-            // Grouping Logic: Check if same as previous row
             const dateStr = format(new Date(row.date), "yyyy-MM-dd");
             const key = `${dateStr}-${row.userId}`;
             const dailyEntry = dailyTotals.get(key);
@@ -310,174 +302,191 @@ export default function RecapPage() {
                 format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
                 prevRow.userId === row.userId;
 
+            const rowBg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+
             return `
-            <tr>
-                <td style="text-align: center; color: #94a3b8; font-weight: 500; position: relative;">
-                    ${isSameDayAndUser ? '<div style="position: absolute; left: 50%; top: -10px; bottom: 10px; width: 2px; background-color: #e2e8f0; transform: translateX(-50%);"></div>' : index + 1}
-                </td>
-                <td>${isSameDayAndUser ? '' : format(new Date(row.date), "dd/MM/yyyy")}</td>
-                <td class="name">${isSameDayAndUser ? '' : getUserName(row.userId)}</td>
+            <tr style="background-color: ${rowBg};">
+                <td style="text-align: center; color: #64748b;">${isSameDayAndUser ? '↳' : index + 1}</td>
+                <td style="font-weight: 600; color: #1e293b;">${isSameDayAndUser ? '' : format(new Date(row.date), "dd/MM/yyyy")}</td>
+                <td style="font-weight: 700; color: #0f172a;">${isSameDayAndUser ? '' : (getUserName(row.userId) || '-')}</td>
                 <td class="time text-green">${row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}</td>
                 <td class="time text-orange">${row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}</td>
                 <td class="time text-orange">${row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}</td>
                 <td class="time text-red">${row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}</td>
                 <td>
-                    ${!isSameDayAndUser ? `<div style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">Total: ${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : "-"}${!row.checkOut ? ' <span style="color: #ca8a04; font-size: 10px;">(Belum Absen Pulang)</span>' : ""}</div>` : ''}
-                    <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'};">${!row.checkOut ? "Belum Absen Pulang" : formatDuration(sessionNetMins)}</span></div>
+                    ${!isSameDayAndUser ? `<div style="font-weight: 800; font-size: 12px; color: #0f172a;">${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-'}${!row.checkOut ? ' <span style="color:#ca8a04; font-size:10px;">(Belum Pulang)</span>' : ''}</div>` : ''}
+                    <div style="font-size: 11px; color: #64748b;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'}; font-weight: 700;">${!row.checkOut ? 'Belum Pulang' : formatDuration(sessionNetMins)}</span></div>
                 </td>
-
-                <td style="color: #ea580c; font-weight: 600; font-size: 12px; text-align: center;">${breakMins > 0 ? formatDuration(breakMins) : "-"}</td>
+                <td style="text-align: center; color: #ea580c; font-weight: 700; font-size: 12px;">${breakMins > 0 ? formatDuration(breakMins) : "-"}</td>
                 <td><span class="status-badge ${statusBadgeClass}">${displayStatus}</span></td>
-                <td style="font-size: 11px; line-height: 1.4; color: #64748b; max-width: 250px;">
-                    ${row.notes ? row.notes : (!row.checkOut ? "-" : "-")} 
-                    ${row.status === 'late' && (row as any).lateReason ? `<br><span style="color: #ef4444; font-weight: 600;">[Telat: ${(row as any).lateReason}]</span>` : ""}
-                    ${!row.checkOut ? `<br><span style="color: #eab308; font-weight: 600;">[Belum Absen Pulang]</span>` : ""}
+                <td style="font-size: 11px; color: #475569; max-width: 180px; white-space: pre-wrap;">
+                    ${row.notes ? row.notes : '-'}
+                    ${row.status === 'late' && (row as any).lateReason ? `<br><span style="color:#ef4444; font-weight:600;">[Telat: ${(row as any).lateReason}]</span>` : ''}
+                    ${!row.checkOut ? `<br><span style="color:#eab308; font-weight:600;">[Belum Pulang]</span>` : ''}
                 </td>
-            </tr>
-        `;
+            </tr>`;
         }).join('');
+
+        // Summary counts
+        const totalRows = processedData.length;
+        const hadir = processedData.filter(r => r.status === 'present').length;
+        const telat = processedData.filter(r => r.status === 'late').length;
+        const sakit = processedData.filter(r => r.status === 'sick').length;
+        const izin = processedData.filter(r => r.status === 'permission').length;
+        const cuti = processedData.filter(r => r.status === 'cuti').length;
+        const alpha = processedData.filter(r => r.status === 'absent').length;
 
         const html = `
         <html>
             <head>
                 <title>Laporan Absensi - ${format(targetDate, "MMMM yyyy", { locale: id })}</title>
                 <style>
-                    body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: white; }
-                    .header { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 3px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 32px; }
-                    .logo-section { display: flex; align-items: flex-start; gap: 20px; }
-                    .logo-img { width: 72px; height: 72px; object-fit: contain; border-radius: 8px; }
-                    .company-info { max-width: 600px; }
-                    .company-info h1 { margin: 0; font-size: 26px; color: #0f172a; font-weight: 800; letter-spacing: -0.5px; }
-                    .company-info p.subtitle { margin: 4px 0 8px; color: #3b82f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .company-info p.address { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
-                    
-                    .report-title { text-align: center; margin-bottom: 30px; background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px dashed #cbd5e1; }
-                    .report-title h2 { margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-                    .report-title .meta { display: flex; justify-content: center; gap: 16px; margin-top: 16px; }
-                    .report-title .meta p { margin: 0; color: #475569; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-                    .report-title .meta p.badge { background: white; padding: 6px 16px; border-radius: 20px; border: 1px solid #cbd5e1; font-weight: 700; color: #1e293b; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-                    
-                    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-                    th { background: #f8fafc; color: #475569; font-weight: 700; text-align: left; padding: 14px 12px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; }
-                    th:first-child { text-align: center; }
-                    td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; color: #475569; vertical-align: top; }
-                    tr:last-child td { border-bottom: none; }
-                    tr:hover td { background-color: #f8fafc; }
-                    
-                    /* Styling individual cells */
-                    td.name { font-weight: 700; color: #0f172a; }
-                    td.time { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 600; font-size: 13px; }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 12px; color: #000; background: white; padding: 30px 40px; }
+
+                    /* ── LETTERHEAD ── */
+                    .letterhead { display: flex; align-items: center; gap: 20px; padding-bottom: 12px; }
+                    .logo-img { width: 70px; height: 70px; object-fit: contain; }
+                    .company-block { flex: 1; }
+                    .company-block h1 { font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #000; }
+                    .company-block .tagline { font-size: 11px; color: #374151; margin: 2px 0; }
+                    .company-block .address { font-size: 10.5px; color: #374151; line-height: 1.5; }
+                    .hr-thick { border: none; border-top: 3px solid #000; margin: 6px 0 2px; }
+                    .hr-thin  { border: none; border-top: 1px solid #000; margin-bottom: 16px; }
+
+                    /* ── REPORT TITLE ── */
+                    .report-meta { text-align: center; margin: 12px 0 18px; }
+                    .report-meta h2 { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; text-decoration: underline; }
+                    .report-meta .periode { font-size: 11px; margin-top: 4px; color: #374151; }
+
+                    /* ── SUMMARY BADGES ── */
+                    .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
+                    .sum-item { font-size: 11px; font-family: Arial, sans-serif; }
+                    .sum-item .label { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 10px; display: block; }
+                    .sum-item .val { font-weight: 800; font-size: 14px; }
+                    .val-hadir { color: #16a34a; }
+                    .val-telat { color: #ea580c; }
+                    .val-sakit { color: #2563eb; }
+                    .val-izin  { color: #7c3aed; }
+                    .val-cuti  { color: #0d9488; }
+                    .val-alpha { color: #475569; }
+
+                    /* ── TABLE ── */
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: Arial, sans-serif; }
+                    thead tr { background-color: #1e3a5f !important; }
+                    th { background-color: #1e3a5f; color: #ffffff; font-weight: 700; text-align: left; padding: 8px 7px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid #1e3a5f; }
+                    th:first-child, td:first-child { text-align: center; width: 28px; }
+                    td { padding: 7px 7px; border: 1px solid #e2e8f0; color: #374151; vertical-align: top; }
+                    tr:last-child td { border-bottom: 2px solid #000; }
+
+                    .time { font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 12px; text-align: center; }
                     .text-green { color: #16a34a; }
                     .text-orange { color: #f97316; }
                     .text-red { color: #dc2626; }
-                    
-                    .status-badge { display: inline-block; padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .status-hadir { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-                    .status-telat { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-                    .status-sakit { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-                    .status-izin { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-                    .status-cuti { background: #ccfbf1; color: #115e59; border: 1px solid #99f6e4; }
-                    .status-alpha { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
-                    .footer { margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: left; border-top: 1px dashed #e2e8f0; padding-top: 20px; font-weight: 500; }
-                    
-                    .signature-section { 
-                        margin-top: 60px; 
-                        display: flex; 
-                        justify-content: flex-end; 
-                        gap: 120px;
-                        padding: 0 40px;
-                    }
-                    .signature-box { 
-                        text-align: center; 
-                        width: 220px;
-                    }
-                    .signature-box p { 
-                        margin-bottom: 90px; 
-                        font-weight: 800; 
-                        font-size: 11px;
-                        color: #64748b;
-                        letter-spacing: 1px;
-                        text-transform: uppercase;
-                    }
-                    .signature-line { 
-                        border-top: 2px solid #0f172a; 
-                        padding-top: 12px;
-                        font-weight: 800;
-                        font-size: 14px;
-                        color: #0f172a;
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                    }
+                    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid; }
+                    .status-hadir { background: #dcfce7; color: #166534; border-color: #86efac; }
+                    .status-telat { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+                    .status-sakit { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+                    .status-izin  { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+                    .status-cuti  { background: #ccfbf1; color: #115e59; border-color: #5eead4; }
+                    .status-alpha { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+
+                    /* ── SIGNATURE ── */
+                    .signature-section { margin-top: 50px; display: flex; justify-content: flex-end; gap: 80px; padding-right: 20px; font-family: Arial, sans-serif; }
+                    .sig-box { text-align: center; width: 180px; }
+                    .sig-box .sig-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #374151; margin-bottom: 70px; }
+                    .sig-box .sig-place { font-size: 10.5px; color: #374151; margin-bottom: 4px; }
+                    .sig-box .sig-name { font-size: 12px; font-weight: bold; border-top: 1.5px solid #000; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+                    .footer { margin-top: 24px; font-size: 9.5px; color: #94a3b8; font-family: Arial, sans-serif; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
+
                     @media print {
-                        body { padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .no-print { display: none; }
-                        .report-title { border: 1px solid #cbd5e1; }
-                        table { box-shadow: none; border-collapse: collapse; }
-                        th, td { border: 1px solid #e2e8f0; }
-                        .status-badge { box-shadow: none; border-width: 2px !important; }
+                        body { padding: 15px 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .status-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .summary { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <div class="logo-section">
-                        <img src="/logo_elok_buah.jpg" class="logo-img" alt="Logo PT Elok Jaya Abadhi" />
-                        <div class="company-info">
-                            <h1>PT ELOK JAYA ABADHI</h1>
-                            <p class="subtitle">Sistem Manajemen Kehadiran Digital</p>
-                            <p class="address">Perum Telagasari Indah Blok E1/15, Jalan Talagamulya, Talagamulya, Telagasari, Karawang, West Java 41381</p>
-                        </div>
+                <!-- LETTERHEAD -->
+                <div class="letterhead">
+                    <img src="/logo_elok_buah.jpg" class="logo-img" alt="Logo" />
+                    <div class="company-block">
+                        <h1>PT ELOK JAYA ABADHI</h1>
+                        <p class="tagline">Sistem Manajemen Kehadiran Karyawan</p>
+                        <p class="address">Perum Telagasari Indah Blok E1/15, Jl. Talagamulya, Talagasari, Telagasari, Karawang, Jawa Barat 41381</p>
                     </div>
                 </div>
-                <div class="report-title">
-                    <h2>LAPORAN REKAPITULASI ABSENSI</h2>
-                    <div class="meta">
-                        <p class="badge">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
-                        <p class="badge">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
-                    </div>
+                <hr class="hr-thick" />
+                <hr class="hr-thin" />
+
+                <!-- TITLE -->
+                <div class="report-meta">
+                    <h2>Laporan Rekapitulasi Kehadiran Karyawan</h2>
+                    <p class="periode">
+                        Periode: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} &mdash; ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}
+                        &nbsp;&nbsp;|&nbsp;&nbsp; Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}
+                        &nbsp;&nbsp;|&nbsp;&nbsp; Total Data: ${totalRows} sesi
+                    </p>
                 </div>
+
+                <!-- SUMMARY -->
+                <div class="summary">
+                    <div class="sum-item"><span class="label">Hadir</span><span class="val val-hadir">${hadir}</span></div>
+                    <div class="sum-item"><span class="label">Telat</span><span class="val val-telat">${telat}</span></div>
+                    <div class="sum-item"><span class="label">Sakit</span><span class="val val-sakit">${sakit}</span></div>
+                    <div class="sum-item"><span class="label">Izin</span><span class="val val-izin">${izin}</span></div>
+                    <div class="sum-item"><span class="label">Cuti</span><span class="val val-cuti">${cuti}</span></div>
+                    <div class="sum-item"><span class="label">Alpha</span><span class="val val-alpha">${alpha}</span></div>
+                </div>
+
+                <!-- TABLE -->
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 30px; text-align: center;">No</th>
-                            <th style="width: 80px;">Tanggal</th>
-                            <th>Nama Karyawan</th>
-                            <th style="width: 50px;">Masuk</th>
-                            <th style="width: 60px;">Istirahat</th>
-                            <th style="width: 50px;">Selesai</th>
-                            <th style="width: 50px;">Pulang</th>
-                            <th style="width: 140px;">Jam Kerja (Total & Sesi)</th>
-                            <th style="width: 90px; text-align: center;">Total Istirahat</th>
-                            <th style="width: 120px;">Status</th>
-                            <th style="width: 200px;">Keterangan</th>
+                            <th>No</th>
+                            <th style="width:72px;">Tanggal</th>
+                            <th style="width:130px;">Nama Karyawan</th>
+                            <th style="width:44px; text-align:center;">Masuk</th>
+                            <th style="width:50px; text-align:center;">Istirahat</th>
+                            <th style="width:44px; text-align:center;">Selesai</th>
+                            <th style="width:44px; text-align:center;">Pulang</th>
+                            <th style="width:120px;">Jam Kerja</th>
+                            <th style="width:70px; text-align:center;">Istirahat</th>
+                            <th style="width:90px;">Status</th>
+                            <th>Keterangan</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${tableRows}
                     </tbody>
                 </table>
+
+                <!-- SIGNATURE -->
                 <div class="signature-section">
-                    <div class="signature-box">
-                        <p>CHECKED BY</p>
-                        <div class="signature-line">NIKO</div>
+                    <div class="sig-box">
+                        <p class="sig-label">Diperiksa Oleh</p>
+                        <p class="sig-place">Karawang, ${format(new Date(), "d MMMM yyyy", { locale: id })}</p>
+                        <div class="sig-name">NIKO</div>
                     </div>
-                    <div class="signature-box">
-                        <p>APPROVED BY</p>
-                        <div class="signature-line">CLAVERINA</div>
+                    <div class="sig-box">
+                        <p class="sig-label">Disetujui Oleh</p>
+                        <p class="sig-place">Karawang, ${format(new Date(), "d MMMM yyyy", { locale: id })}</p>
+                        <div class="sig-name">CLAVERINA</div>
                     </div>
                 </div>
+
                 <div class="footer">
-                    Dicetak pada: ${format(new Date(), "d MMMM yyyy HH:mm", { locale: id })}
+                    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; ${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
                 </div>
+
                 <script>
-                    window.onload = () => {
-                        setTimeout(() => window.print(), 500);
-                    };
+                    window.onload = () => { setTimeout(() => window.print(), 500); };
                 </script>
             </body>
-        </html>
-    `;
+        </html>`;
 
         printWindow.document.write(html);
         printWindow.document.close();
