@@ -413,18 +413,28 @@ export default function RecapPage() {
                             row.status === 'cuti' ? 'st-cuti' :
                                 row.status === 'absent' ? 'st-alpha' : '';
 
-            const jamKerja = !isSameDayAndUser
-                ? (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
-                : '';
-
             const inTime = row.checkIn ? format(new Date(row.checkIn), 'HH:mm') : '-';
             const brkTime = row.breakStart ? format(new Date(row.breakStart), 'HH:mm') : '-';
             const brkEnd = row.breakEnd ? format(new Date(row.breakEnd), 'HH:mm') : '-';
             const outTime = row.checkOut ? format(new Date(row.checkOut), 'HH:mm') : '-';
 
-            const keterangan = row.notes
-                ? row.notes
-                : (!row.checkOut ? '<span class="note-warn">Belum Pulang</span>' : '-');
+            // Validation for incomplete sequences (e.g. checkIn and checkOut exist but no breakStart/End)
+            // Also if not checked out at all
+            const isSequenceIncomplete = (row.checkIn && !row.checkOut) || 
+                                         (inTime !== '-' && outTime !== '-' && ((brkTime !== '-' && brkEnd === '-') || (brkTime === '-' && brkEnd !== '-') || (brkTime === '-' && brkEnd === '-')));
+
+            const jamKerja = !isSameDayAndUser
+                ? (isSequenceIncomplete 
+                    ? '<span class="note-warn" style="font-size:10px;">Data Absensi<br>Tidak Lengkap</span>' 
+                    : (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-'))
+                : '';
+
+            let keterangan = row.notes ? row.notes : '-';
+            if (!row.checkOut) {
+                keterangan = row.notes ? row.notes + ' <span class="note-warn">(Belum Pulang)</span>' : '<span class="note-warn">Belum Pulang</span>';
+            } else if (isSequenceIncomplete) {
+                keterangan = row.notes ? row.notes + ' <span class="note-warn">(Data Absensi Tidak Lengkap)</span>' : '<span class="note-warn">Data Absensi Tidak Lengkap</span>';
+            }
             const lateNote = row.status === 'late' && (row as any).lateReason
                 ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
                 : '';
@@ -609,16 +619,37 @@ export default function RecapPage() {
                                                 <td className="px-4 py-3">
                                                     {!isSameDayAndUser && (() => {
                                                         const daily = dailyTotals.get(key);
-                                                        const showTotal = daily?.complete && (daily?.mins ?? 0) > 0;
+                                                        const inTime = row.checkIn ? 'yes' : '-';
+                                                        const outTime = row.checkOut ? 'yes' : '-';
+                                                        const brkStart = row.breakStart ? 'yes' : '-';
+                                                        const brkEnd = row.breakEnd ? 'yes' : '-';
+                                                        const isSequenceIncomplete = (inTime !== '-' && !row.checkOut) || 
+                                                           (inTime !== '-' && outTime !== '-' && ((brkStart !== '-' && brkEnd === '-') || (brkStart === '-' && brkEnd !== '-') || (brkStart === '-' && brkEnd === '-')));
+
+                                                        const showTotal = daily?.complete && (daily?.mins ?? 0) > 0 && !isSequenceIncomplete;
+                                                        
                                                         return (
-                                                            <div className="text-gray-900 font-bold mb-1">
-                                                                Total: {showTotal ? formatDuration(daily!.mins) : "-"}
-                                                                {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Absen Pulang)</span>}
+                                                            <div className="text-gray-900 font-bold mb-1 text-xs">
+                                                                {isSequenceIncomplete ? (
+                                                                    <span className="text-orange-600 font-bold leading-tight block">Data Absensi<br/>Tidak Lengkap</span>
+                                                                ) : (
+                                                                    <>
+                                                                      Total: {showTotal ? formatDuration(daily!.mins) : "-"}
+                                                                      {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Absen Pulang)</span>}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         );
                                                     })()}
-                                                    <div className="text-xs text-gray-500">
-                                                        Sesi: {!row.checkOut ? <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span> : formatDuration(sessionNetMins)}
+                                                    <div className="text-xs text-gray-500 mt-1">
+                                                        {(() => {
+                                                           const brkS = row.breakStart ? 'yes' : '-';
+                                                           const brkE = row.breakEnd ? 'yes' : '-';
+                                                           const isSeqIncomplete = (!row.checkOut) || (row.checkIn && row.checkOut && ((brkS !== '-' && brkE === '-') || (brkS === '-' && brkE !== '-') || (brkS === '-' && brkE === '-')));
+                                                           if (!row.checkOut) return <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span>;
+                                                           if (isSeqIncomplete) return <span className="text-orange-600 font-semibold text-[10px]">Urutan Absen Terputus</span>;
+                                                           return <>Sesi: {formatDuration(sessionNetMins)}</>;
+                                                        })()}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">
