@@ -267,9 +267,21 @@ export default function RecapPage() {
         return `${h}j ${m}m`;
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         const now = new Date();
         const fileName = `LAPORAN ABSENSI MANAJEMEN PT EJA - ${format(now, "EEEE, dd MMMM yyyy", { locale: id }).toUpperCase()} - ${format(now, "HH.mm")}.html`;
+
+        // Embed logo as base64 so it works from blob URL pages
+        let logoDataUrl = '';
+        try {
+            const logoRes = await fetch('/logo_elok_buah.jpg');
+            const logoBlob = await logoRes.blob();
+            logoDataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(logoBlob);
+            });
+        } catch (_) { /* skip logo if unavailable */ }
 
         const html = `<!DOCTYPE html>
 <html>
@@ -343,7 +355,7 @@ export default function RecapPage() {
 </head>
 <body>
   <div class="letterhead">
-    <img src="/logo_elok_buah.jpg" class="logo-img" alt="Logo" />
+    <img src="${logoDataUrl}" class="logo-img" alt="Logo" />
     <div class="company-block">
       <h1>PT Elok Jaya Abadhi</h1>
       <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
