@@ -274,7 +274,7 @@ export default function RecapPage() {
         const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Laporan Absensi - ${format(targetDate, "MMMM yyyy", { locale: id })}</title>
+  <title>${fileName}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: white; padding: 28px 36px; }
@@ -329,9 +329,15 @@ export default function RecapPage() {
 
     .footer { margin-top: 18px; font-size: 8.5px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
 
+    /* DOWNLOAD BUTTON */
+    .btn-wrap { text-align: center; margin-top: 20px; }
+    .download-btn { display: inline-flex; align-items: center; gap: 8px; background: #1d4ed8; color: #fff; border: none; padding: 10px 28px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; text-decoration: none; }
+    .download-btn:hover { background: #1e40af; }
+
     @media print {
       body { padding: 12px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       thead tr, tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .btn-wrap { display: none !important; }
     }
   </style>
 </head>
@@ -443,7 +449,23 @@ export default function RecapPage() {
     Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; ${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
   </div>
 
-  <script>window.onload = () => { setTimeout(() => window.print(), 500); };</script>
+  <div class="btn-wrap">
+    <a id="dl-btn" class="download-btn" href="#">&#11015;&nbsp; Download File</a>
+  </div>
+
+  <script>
+    var _fn = "${fileName}";
+    document.title = _fn;
+    window.onload = function() {
+      var btn = document.getElementById('dl-btn');
+      if (btn) {
+        var blob = new Blob([document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
+        btn.href = URL.createObjectURL(blob);
+        btn.download = _fn;
+      }
+      setTimeout(function() { window.print(); }, 600);
+    };
+  </script>
 </body>
 </html>`;
 
