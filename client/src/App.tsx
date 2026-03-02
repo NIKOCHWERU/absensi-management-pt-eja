@@ -20,6 +20,7 @@ import InfoBoardPage from "@/pages/admin/InfoBoardPage";
 import AdminComplaints from "@/pages/admin/ComplaintsPage";
 import AdminLeave from "@/pages/admin/AdminLeavePage";
 import AdminLeaveHistory from "@/pages/admin/AdminLeaveHistoryPage";
+import AdminAttendanceHistory from "@/pages/admin/AttendanceHistoryPage";
 import EmployeeComplaint from "@/pages/employee/ComplaintPage";
 import EmployeeLeave from "@/pages/employee/LeavePage";
 import NotFound from "@/pages/not-found";
@@ -69,6 +70,9 @@ function Router() {
       </Route>
       <Route path="/admin/employees">
         <ProtectedRoute component={AdminEmployeeList} adminOnly />
+      </Route>
+      <Route path="/admin/attendance-history">
+        <ProtectedRoute component={AdminAttendanceHistory} adminOnly />
       </Route>
       <Route path="/admin/recap">
         <ProtectedRoute component={AdminRecap} adminOnly />

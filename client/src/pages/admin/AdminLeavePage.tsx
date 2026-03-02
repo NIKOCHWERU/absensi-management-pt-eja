@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Loader2, Check, X, ArrowLeft, Calendar, User as UserIcon, MessageSquare, Info } from "lucide-react";
+import { Loader2, Check, X, ArrowLeft, Calendar, User as UserIcon, MessageSquare, Info , Image as ImageIcon} from "lucide-react";
 import { api } from "@shared/routes";
 import { useLocation } from "wouter";
 

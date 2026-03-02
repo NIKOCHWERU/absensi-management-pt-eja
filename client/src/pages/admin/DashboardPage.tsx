@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info, AlertCircle } from "lucide-react";
+import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info, AlertCircle , Image as ImageIcon} from "lucide-react";
 import {
     BarChart,
     Bar,
@@ -186,6 +186,10 @@ export default function AdminDashboard() {
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/recap")}>
                             <Clock className="mr-2 h-4 w-4" />
                             Rekap Absensi
+                        </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-history")}>
+                            <ImageIcon className="mr-2 h-4 w-4" />
+                            Riwayat Absensi
                         </Button>
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/leave")}>
                             <CalendarDays className="mr-2 h-4 w-4" />
