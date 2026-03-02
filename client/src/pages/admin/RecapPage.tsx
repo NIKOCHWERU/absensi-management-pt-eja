@@ -370,61 +370,61 @@ export default function RecapPage() {
     </thead>
     <tbody>
       ${processedData.map((row, index) => {
-        const breakMins = calculateHours(row.breakStart, row.breakEnd);
-        const { netWorkMins: sessionNetMins } = calculateDailyTotal([row]);
-        const dateStr = format(new Date(row.date), "yyyy-MM-dd");
-        const key = `${dateStr}-${row.userId}`;
-        const dailyEntry = dailyTotals.get(key);
-        const dailyTotalMins = dailyEntry?.mins ?? 0;
-        const dailyIsComplete = dailyEntry?.complete ?? false;
-        const prevRow = index > 0 ? processedData[index - 1] : null;
-        const isSameDayAndUser = !!(prevRow &&
-          format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
-          prevRow.userId === row.userId);
+            const breakMins = calculateHours(row.breakStart, row.breakEnd);
+            const { netWorkMins: sessionNetMins } = calculateDailyTotal([row]);
+            const dateStr = format(new Date(row.date), "yyyy-MM-dd");
+            const key = `${dateStr}-${row.userId}`;
+            const dailyEntry = dailyTotals.get(key);
+            const dailyTotalMins = dailyEntry?.mins ?? 0;
+            const dailyIsComplete = dailyEntry?.complete ?? false;
+            const prevRow = index > 0 ? processedData[index - 1] : null;
+            const isSameDayAndUser = !!(prevRow &&
+                format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
+                prevRow.userId === row.userId);
 
-        const statusLabel = row.status === 'present' ? 'Hadir' :
-          row.status === 'late' ? 'Telat' :
-          row.status === 'sick' ? 'Sakit' :
-          row.status === 'permission' ? 'Izin' :
-          row.status === 'cuti' ? 'Cuti' :
-          row.status === 'absent' ? 'Alpha' : (row.status || '-');
-        const statusClass = row.status === 'present' ? 'st-hadir' :
-          row.status === 'late' ? 'st-telat' :
-          row.status === 'sick' ? 'st-sakit' :
-          row.status === 'permission' ? 'st-izin' :
-          row.status === 'cuti' ? 'st-cuti' :
-          row.status === 'absent' ? 'st-alpha' : '';
+            const statusLabel = row.status === 'present' ? 'Hadir' :
+                row.status === 'late' ? 'Telat' :
+                    row.status === 'sick' ? 'Sakit' :
+                        row.status === 'permission' ? 'Izin' :
+                            row.status === 'cuti' ? 'Cuti' :
+                                row.status === 'absent' ? 'Alpha' : (row.status || '-');
+            const statusClass = row.status === 'present' ? 'st-hadir' :
+                row.status === 'late' ? 'st-telat' :
+                    row.status === 'sick' ? 'st-sakit' :
+                        row.status === 'permission' ? 'st-izin' :
+                            row.status === 'cuti' ? 'st-cuti' :
+                                row.status === 'absent' ? 'st-alpha' : '';
 
-        const jamKerja = !isSameDayAndUser
-          ? (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
-          : '';
+            const jamKerja = !isSameDayAndUser
+                ? (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
+                : '';
 
-        const inTime  = row.checkIn    ? format(new Date(row.checkIn),    'HH:mm') : '-';
-        const brkTime = row.breakStart ? format(new Date(row.breakStart), 'HH:mm') : '-';
-        const brkEnd  = row.breakEnd   ? format(new Date(row.breakEnd),   'HH:mm') : '-';
-        const outTime = row.checkOut   ? format(new Date(row.checkOut),   'HH:mm') : '-';
+            const inTime = row.checkIn ? format(new Date(row.checkIn), 'HH:mm') : '-';
+            const brkTime = row.breakStart ? format(new Date(row.breakStart), 'HH:mm') : '-';
+            const brkEnd = row.breakEnd ? format(new Date(row.breakEnd), 'HH:mm') : '-';
+            const outTime = row.checkOut ? format(new Date(row.checkOut), 'HH:mm') : '-';
 
-        const keterangan = row.notes
-          ? row.notes
-          : (!row.checkOut ? '<span class="note-warn">Belum Pulang</span>' : '-');
-        const lateNote = row.status === 'late' && (row as any).lateReason
-          ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
-          : '';
+            const keterangan = row.notes
+                ? row.notes
+                : (!row.checkOut ? '<span class="note-warn">Belum Pulang</span>' : '-');
+            const lateNote = row.status === 'late' && (row as any).lateReason
+                ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
+                : '';
 
-        return `<tr>
+            return `<tr>
           <td class="col-no">${isSameDayAndUser ? '<span style="color:#cbd5e1;">↳</span>' : (index + 1)}</td>
           <td class="col-date">${isSameDayAndUser ? '' : format(new Date(row.date), 'dd/MM/yyyy')}</td>
           <td class="col-name">${isSameDayAndUser ? '' : (getUserName(row.userId) || '-')}</td>
-          <td class="col-time ${inTime  === '-' ? 't-dash' : 't-in' }">${inTime}</td>
+          <td class="col-time ${inTime === '-' ? 't-dash' : 't-in'}">${inTime}</td>
           <td class="col-time ${brkTime === '-' ? 't-dash' : 't-brk'}">${brkTime}</td>
-          <td class="col-time ${brkEnd  === '-' ? 't-dash' : 't-brk'}">${brkEnd}</td>
+          <td class="col-time ${brkEnd === '-' ? 't-dash' : 't-brk'}">${brkEnd}</td>
           <td class="col-time ${outTime === '-' ? 't-dash' : 't-out'}">${outTime}</td>
           <td class="col-work">${jamKerja}</td>
           <td class="col-brk">${breakMins > 0 ? formatDuration(breakMins) : '-'}</td>
           <td class="col-stat"><span class="${statusClass}">${statusLabel}</span></td>
           <td class="col-note">${keterangan}${lateNote}</td>
         </tr>`;
-      }).join('')}
+        }).join('')}
     </tbody>
   </table>
 
@@ -449,7 +449,6 @@ export default function RecapPage() {
 
         printWindow.document.write(html);
         printWindow.document.close();
-    }
     };
 
     return (
