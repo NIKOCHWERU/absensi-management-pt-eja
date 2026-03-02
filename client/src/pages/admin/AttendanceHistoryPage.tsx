@@ -3,15 +3,30 @@ import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { format } from "date-fns";
+import { format, addDays, subDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin
+    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin, ChevronLeft, ChevronRight
 } from "lucide-react";
+
+// Helper: resolve photo URL — handles both local uploads and Google Drive File IDs
+function getPhotoUrl(value: string | null): string {
+    if (!value) return '';
+    // Base64 data URI
+    if (value.startsWith('data:')) return value;
+    // Full URL
+    if (value.startsWith('http')) return value;
+    // Google Drive File ID: no dots, no slashes, length > 20 — use server proxy to avoid CORS/auth issues
+    if (!value.includes('/') && !value.includes('.') && value.length > 20) {
+        return `/api/images/${value}`;
+    }
+    // Local file
+    return `/uploads/${value}`;
+}
 
 export default function AttendanceHistoryPage() {
     const [, setLocation] = useLocation();
@@ -40,17 +55,19 @@ export default function AttendanceHistoryPage() {
     // Helper to extract File ID from Google Drive URL and generate a View Link
     const getDriveViewLink = (url: string | null) => {
         if (!url) return null;
-        // If it's already a full Google Drive URL
         if (url.includes('drive.google.com')) return url;
-
-        // Usually, in this app, photoUrls might be stored as Drive IDs or relative paths
-        // Let's assume if it looks like an ID (no slashes), we construct the Drive link
         if (!url.includes('/') && url.length > 15) {
             return `https://drive.google.com/file/d/${url}/view`;
         }
+        return getPhotoUrl(url); // Fallback to photo URL to view in new tab
+    };
 
-        // Fallback for relative paths or full URLs
-        return url;
+    const handlePrev = () => {
+        setSelectedDate(prev => format(subDays(new Date(prev), 1), 'yyyy-MM-dd'));
+    };
+
+    const handleNext = () => {
+        setSelectedDate(prev => format(addDays(new Date(prev), 1), 'yyyy-MM-dd'));
     };
 
     const SidebarContent = () => (
@@ -121,11 +138,7 @@ export default function AttendanceHistoryPage() {
             <div className="flex flex-col items-center gap-1 p-2 border border-gray-100 rounded-lg bg-gray-50/50">
                 <p className="text-[10px] font-bold text-gray-500">{label}</p>
                 <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-200 border border-gray-300 flex items-center justify-center relative group">
-                    {url.startsWith('/') || url.startsWith('http') ? (
-                        <img src={url} alt={label} className="w-full h-full object-cover" />
-                    ) : (
-                        <ImageIcon className="w-6 h-6 text-gray-400" />
-                    )}
+                    <img src={getPhotoUrl(url)} alt={label} className="w-full h-full object-cover" />
                     <a
                         href={viewLink || "#"}
                         target="_blank"
@@ -178,14 +191,16 @@ export default function AttendanceHistoryPage() {
                         <p className="text-sm text-gray-500">Lihat detail waktu, status, dan foto absensi karyawan</p>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-white p-2 border border-gray-200 rounded-lg shadow-sm w-full md:w-auto">
-                        <CalendarDays className="w-5 h-5 text-gray-400 ml-2" />
-                        <Input
-                            type="date"
-                            className="border-none shadow-none focus-visible:ring-0 text-sm font-semibold"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                        />
+                    <div className="flex items-center gap-2 bg-white border rounded-md p-1 shadow-sm w-full md:w-auto">
+                        <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium min-w-[120px] text-center">
+                            {format(new Date(selectedDate), "d MMM yyyy", { locale: id })}
+                        </span>
+                        <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
                 </header>
 
