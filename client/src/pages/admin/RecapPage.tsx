@@ -271,225 +271,185 @@ export default function RecapPage() {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
-        const tableRows = processedData.map((row, index) => {
-            const breakMins = calculateHours(row.breakStart, row.breakEnd);
-            const { netWorkMins: sessionNetMins } = calculateDailyTotal([row]);
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Laporan Absensi - ${format(targetDate, "MMMM yyyy", { locale: id })}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: white; padding: 28px 36px; }
 
-            const rawStatus = row.status || 'present';
-            let statusBadgeClass = 'status-hadir';
-            if (rawStatus === 'late') statusBadgeClass = 'status-telat';
-            else if (rawStatus === 'sick') statusBadgeClass = 'status-sakit';
-            else if (rawStatus === 'permission') statusBadgeClass = 'status-izin';
-            else if (rawStatus === 'cuti') statusBadgeClass = 'status-cuti';
-            else if (rawStatus === 'absent') statusBadgeClass = 'status-alpha';
+    /* LETTERHEAD */
+    .letterhead { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; }
+    .logo-img { width: 60px; height: 60px; object-fit: contain; }
+    .company-block h1 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #1e293b; }
+    .company-block .tagline { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .hr-thick { border: none; border-top: 2px solid #cbd5e1; margin: 6px 0 2px; }
+    .hr-thin  { border: none; border-top: 1px solid #e2e8f0; margin-bottom: 18px; }
 
-            const displayStatus = (row.status === 'present' ? 'Hadir' :
-                row.status === 'late' ? 'Telat' :
-                    row.status === 'sick' ? 'Sakit' :
-                        row.status === 'permission' ? 'Izin' :
-                            row.status === 'cuti' ? 'Cuti' :
-                                row.status === 'absent' ? 'Alpha' : row.status) +
-                ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '');
+    /* TITLE */
+    .report-meta { text-align: center; margin-bottom: 20px; }
+    .report-meta h2 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #1e293b; }
+    .report-meta .sub { font-size: 10.5px; margin-top: 4px; color: #475569; }
 
-            const dateStr = format(new Date(row.date), "yyyy-MM-dd");
-            const key = `${dateStr}-${row.userId}`;
-            const dailyEntry = dailyTotals.get(key);
-            const dailyTotalMins = dailyEntry?.mins ?? 0;
-            const dailyIsComplete = dailyEntry?.complete ?? false;
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    thead tr { background-color: #f8fafc; }
+    th { color: #374151; font-weight: 700; text-align: left; padding: 8px 8px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 2px solid #1e293b; border-right: 1px solid #e2e8f0; white-space: nowrap; }
+    th.c { text-align: center; }
+    td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; vertical-align: middle; white-space: nowrap; }
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
 
-            const prevRow = index > 0 ? processedData[index - 1] : null;
-            const isSameDayAndUser = prevRow &&
-                format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
-                prevRow.userId === row.userId;
+    .col-no   { text-align: center; color: #94a3b8; font-size: 10px; }
+    .col-date { color: #374151; font-weight: 600; }
+    .col-name { color: #1d4ed8; font-weight: 600; }
+    .col-time { font-family: ui-monospace, Consolas, monospace; font-size: 11px; text-align: center; }
+    .t-in   { color: #15803d; font-weight: 700; }
+    .t-brk  { color: #b45309; font-weight: 700; }
+    .t-out  { color: #b91c1c; font-weight: 700; }
+    .t-dash { color: #94a3b8; }
+    .col-work { font-size: 11px; font-weight: 700; color: #1e293b; }
+    .col-brk  { text-align: center; font-size: 11px; font-weight: 700; color: #ea580c; }
+    .col-stat { text-align: center; font-weight: 700; font-size: 11px; }
+    .st-hadir { color: #16a34a; }
+    .st-telat { color: #ea580c; }
+    .st-sakit { color: #2563eb; }
+    .st-izin  { color: #7c3aed; }
+    .st-cuti  { color: #0d9488; }
+    .st-alpha { color: #dc2626; }
+    .col-note { font-size: 10.5px; color: #475569; white-space: normal; max-width: 200px; }
+    .note-late { color: #dc2626; font-size: 10px; }
+    .note-warn { color: #ca8a04; font-weight: 600; }
 
-            const rowBg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+    /* SIGNATURE */
+    .signature-section { margin-top: 48px; display: flex; justify-content: space-between; padding: 0 24px; }
+    .sig-box { text-align: center; width: 160px; }
+    .sig-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #374151; margin-bottom: 64px; }
+    .sig-name { font-size: 11px; font-weight: 800; border-top: 1.5px solid #374151; padding-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; color: #1e293b; }
 
-            return `
-            <tr style="background-color: ${rowBg};">
-                <td style="text-align: center; color: #64748b;">${isSameDayAndUser ? '↳' : index + 1}</td>
-                <td style="font-weight: 600; color: #1e293b;">${isSameDayAndUser ? '' : format(new Date(row.date), "dd/MM/yyyy")}</td>
-                <td style="font-weight: 700; color: #0f172a;">${isSameDayAndUser ? '' : (getUserName(row.userId) || '-')}</td>
-                <td class="time text-green">${row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}</td>
-                <td class="time text-orange">${row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}</td>
-                <td class="time text-orange">${row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}</td>
-                <td class="time text-red">${row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}</td>
-                <td>
-                    ${!isSameDayAndUser ? `<div style="font-weight: 800; font-size: 12px; color: #0f172a;">${dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-'}${!row.checkOut ? ' <span style="color:#ca8a04; font-size:10px;">(Belum Pulang)</span>' : ''}</div>` : ''}
-                    <div style="font-size: 11px; color: #64748b;">Sesi: <span style="color: ${!row.checkOut ? '#ca8a04' : '#059669'}; font-weight: 700;">${!row.checkOut ? 'Belum Pulang' : formatDuration(sessionNetMins)}</span></div>
-                </td>
-                <td style="text-align: center; color: #ea580c; font-weight: 700; font-size: 12px;">${breakMins > 0 ? formatDuration(breakMins) : "-"}</td>
-                <td><span class="status-badge ${statusBadgeClass}">${displayStatus}</span></td>
-                <td style="font-size: 11px; color: #475569; max-width: 180px; white-space: pre-wrap;">
-                    ${row.notes ? row.notes : '-'}
-                    ${row.status === 'late' && (row as any).lateReason ? `<br><span style="color:#ef4444; font-weight:600;">[Telat: ${(row as any).lateReason}]</span>` : ''}
-                    ${!row.checkOut ? `<br><span style="color:#eab308; font-weight:600;">[Belum Pulang]</span>` : ''}
-                </td>
-            </tr>`;
-        }).join('');
+    .footer { margin-top: 18px; font-size: 8.5px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
 
-        // Summary counts
-        const totalRows = processedData.length;
-        const hadir = processedData.filter(r => r.status === 'present').length;
-        const telat = processedData.filter(r => r.status === 'late').length;
-        const sakit = processedData.filter(r => r.status === 'sick').length;
-        const izin = processedData.filter(r => r.status === 'permission').length;
-        const cuti = processedData.filter(r => r.status === 'cuti').length;
-        const alpha = processedData.filter(r => r.status === 'absent').length;
+    @media print {
+      body { padding: 12px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      thead tr, tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="letterhead">
+    <img src="/logo_elok_buah.jpg" class="logo-img" alt="Logo" />
+    <div class="company-block">
+      <h1>PT Elok Jaya Abadhi</h1>
+      <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
+    </div>
+  </div>
+  <hr class="hr-thick" />
+  <hr class="hr-thin" />
 
-        const html = `
-        <html>
-            <head>
-                <title>Laporan Absensi - ${format(targetDate, "MMMM yyyy", { locale: id })}</title>
-                <style>
-                    * { box-sizing: border-box; margin: 0; padding: 0; }
-                    body { font-family: 'Times New Roman', Times, serif; font-size: 12px; color: #000; background: white; padding: 30px 40px; }
+  <div class="report-meta">
+    <h2>Laporan Rekapitulasi Absensi</h2>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+    <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+  </div>
 
-                    /* ── LETTERHEAD ── */
-                    .letterhead { display: flex; align-items: center; gap: 20px; padding-bottom: 12px; }
-                    .logo-img { width: 70px; height: 70px; object-fit: contain; }
-                    .company-block { flex: 1; }
-                    .company-block h1 { font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #000; }
-                    .company-block .tagline { font-size: 11px; color: #374151; margin: 2px 0; }
-                    .company-block .address { font-size: 10.5px; color: #374151; line-height: 1.5; }
-                    .hr-thick { border: none; border-top: 3px solid #000; margin: 6px 0 2px; }
-                    .hr-thin  { border: none; border-top: 1px solid #000; margin-bottom: 16px; }
+  <table>
+    <thead>
+      <tr>
+        <th class="c" style="width:28px;">No</th>
+        <th style="width:76px;">Tanggal</th>
+        <th style="width:130px;">Nama Karyawan</th>
+        <th class="c" style="width:52px;">Masuk</th>
+        <th class="c" style="width:52px;">Istirahat</th>
+        <th class="c" style="width:52px;">Selesai</th>
+        <th class="c" style="width:52px;">Pulang</th>
+        <th style="width:80px;">Jam Kerja</th>
+        <th class="c" style="width:80px;">Total Istirahat</th>
+        <th class="c" style="width:62px;">Status</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${processedData.map((row, index) => {
+        const breakMins = calculateHours(row.breakStart, row.breakEnd);
+        const { netWorkMins: sessionNetMins } = calculateDailyTotal([row]);
+        const dateStr = format(new Date(row.date), "yyyy-MM-dd");
+        const key = `${dateStr}-${row.userId}`;
+        const dailyEntry = dailyTotals.get(key);
+        const dailyTotalMins = dailyEntry?.mins ?? 0;
+        const dailyIsComplete = dailyEntry?.complete ?? false;
+        const prevRow = index > 0 ? processedData[index - 1] : null;
+        const isSameDayAndUser = !!(prevRow &&
+          format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
+          prevRow.userId === row.userId);
 
-                    /* ── REPORT TITLE ── */
-                    .report-meta { text-align: center; margin: 12px 0 18px; }
-                    .report-meta h2 { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; text-decoration: underline; }
-                    .report-meta .periode { font-size: 11px; margin-top: 4px; color: #374151; }
+        const statusLabel = row.status === 'present' ? 'Hadir' :
+          row.status === 'late' ? 'Telat' :
+          row.status === 'sick' ? 'Sakit' :
+          row.status === 'permission' ? 'Izin' :
+          row.status === 'cuti' ? 'Cuti' :
+          row.status === 'absent' ? 'Alpha' : (row.status || '-');
+        const statusClass = row.status === 'present' ? 'st-hadir' :
+          row.status === 'late' ? 'st-telat' :
+          row.status === 'sick' ? 'st-sakit' :
+          row.status === 'permission' ? 'st-izin' :
+          row.status === 'cuti' ? 'st-cuti' :
+          row.status === 'absent' ? 'st-alpha' : '';
 
-                    /* ── SUMMARY BADGES ── */
-                    .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
-                    .sum-item { font-size: 11px; font-family: Arial, sans-serif; }
-                    .sum-item .label { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 10px; display: block; }
-                    .sum-item .val { font-weight: 800; font-size: 14px; }
-                    .val-hadir { color: #16a34a; }
-                    .val-telat { color: #ea580c; }
-                    .val-sakit { color: #2563eb; }
-                    .val-izin  { color: #7c3aed; }
-                    .val-cuti  { color: #0d9488; }
-                    .val-alpha { color: #475569; }
+        const jamKerja = !isSameDayAndUser
+          ? (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
+          : '';
 
-                    /* ── TABLE ── */
-                    table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: Arial, sans-serif; }
-                    thead tr { background-color: #1e3a5f !important; }
-                    th { background-color: #1e3a5f; color: #ffffff; font-weight: 700; text-align: left; padding: 8px 7px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid #1e3a5f; }
-                    th:first-child, td:first-child { text-align: center; width: 28px; }
-                    td { padding: 7px 7px; border: 1px solid #e2e8f0; color: #374151; vertical-align: top; }
-                    tr:last-child td { border-bottom: 2px solid #000; }
+        const inTime  = row.checkIn    ? format(new Date(row.checkIn),    'HH:mm') : '-';
+        const brkTime = row.breakStart ? format(new Date(row.breakStart), 'HH:mm') : '-';
+        const brkEnd  = row.breakEnd   ? format(new Date(row.breakEnd),   'HH:mm') : '-';
+        const outTime = row.checkOut   ? format(new Date(row.checkOut),   'HH:mm') : '-';
 
-                    .time { font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 12px; text-align: center; }
-                    .text-green { color: #16a34a; }
-                    .text-orange { color: #f97316; }
-                    .text-red { color: #dc2626; }
+        const keterangan = row.notes
+          ? row.notes
+          : (!row.checkOut ? '<span class="note-warn">Belum Pulang</span>' : '-');
+        const lateNote = row.status === 'late' && (row as any).lateReason
+          ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
+          : '';
 
-                    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid; }
-                    .status-hadir { background: #dcfce7; color: #166534; border-color: #86efac; }
-                    .status-telat { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
-                    .status-sakit { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
-                    .status-izin  { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
-                    .status-cuti  { background: #ccfbf1; color: #115e59; border-color: #5eead4; }
-                    .status-alpha { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+        return `<tr>
+          <td class="col-no">${isSameDayAndUser ? '<span style="color:#cbd5e1;">↳</span>' : (index + 1)}</td>
+          <td class="col-date">${isSameDayAndUser ? '' : format(new Date(row.date), 'dd/MM/yyyy')}</td>
+          <td class="col-name">${isSameDayAndUser ? '' : (getUserName(row.userId) || '-')}</td>
+          <td class="col-time ${inTime  === '-' ? 't-dash' : 't-in' }">${inTime}</td>
+          <td class="col-time ${brkTime === '-' ? 't-dash' : 't-brk'}">${brkTime}</td>
+          <td class="col-time ${brkEnd  === '-' ? 't-dash' : 't-brk'}">${brkEnd}</td>
+          <td class="col-time ${outTime === '-' ? 't-dash' : 't-out'}">${outTime}</td>
+          <td class="col-work">${jamKerja}</td>
+          <td class="col-brk">${breakMins > 0 ? formatDuration(breakMins) : '-'}</td>
+          <td class="col-stat"><span class="${statusClass}">${statusLabel}</span></td>
+          <td class="col-note">${keterangan}${lateNote}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
 
-                    /* ── SIGNATURE ── */
-                    .signature-section { margin-top: 50px; display: flex; justify-content: flex-end; gap: 80px; padding-right: 20px; font-family: Arial, sans-serif; }
-                    .sig-box { text-align: center; width: 180px; }
-                    .sig-box .sig-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #374151; margin-bottom: 70px; }
-                    .sig-box .sig-place { font-size: 10.5px; color: #374151; margin-bottom: 4px; }
-                    .sig-box .sig-name { font-size: 12px; font-weight: bold; border-top: 1.5px solid #000; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  <div class="signature-section">
+    <div class="sig-box">
+      <p class="sig-label">Checked By</p>
+      <div class="sig-name">NIKO</div>
+    </div>
+    <div class="sig-box">
+      <p class="sig-label">Approved By</p>
+      <div class="sig-name">CLAVERINA</div>
+    </div>
+  </div>
 
-                    .footer { margin-top: 24px; font-size: 9.5px; color: #94a3b8; font-family: Arial, sans-serif; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
+  <div class="footer">
+    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; ${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
+  </div>
 
-                    @media print {
-                        body { padding: 15px 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .status-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .summary { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    }
-                </style>
-            </head>
-            <body>
-                <!-- LETTERHEAD -->
-                <div class="letterhead">
-                    <img src="/logo_elok_buah.jpg" class="logo-img" alt="Logo" />
-                    <div class="company-block">
-                        <h1>PT ELOK JAYA ABADHI</h1>
-                        <p class="tagline">Sistem Manajemen Kehadiran Karyawan</p>
-                        <p class="address">Perum Telagasari Indah Blok E1/15, Jl. Talagamulya, Talagasari, Telagasari, Karawang, Jawa Barat 41381</p>
-                    </div>
-                </div>
-                <hr class="hr-thick" />
-                <hr class="hr-thin" />
-
-                <!-- TITLE -->
-                <div class="report-meta">
-                    <h2>Laporan Rekapitulasi Kehadiran Karyawan</h2>
-                    <p class="periode">
-                        Periode: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} &mdash; ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}
-                        &nbsp;&nbsp;|&nbsp;&nbsp; Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}
-                        &nbsp;&nbsp;|&nbsp;&nbsp; Total Data: ${totalRows} sesi
-                    </p>
-                </div>
-
-                <!-- SUMMARY -->
-                <div class="summary">
-                    <div class="sum-item"><span class="label">Hadir</span><span class="val val-hadir">${hadir}</span></div>
-                    <div class="sum-item"><span class="label">Telat</span><span class="val val-telat">${telat}</span></div>
-                    <div class="sum-item"><span class="label">Sakit</span><span class="val val-sakit">${sakit}</span></div>
-                    <div class="sum-item"><span class="label">Izin</span><span class="val val-izin">${izin}</span></div>
-                    <div class="sum-item"><span class="label">Cuti</span><span class="val val-cuti">${cuti}</span></div>
-                    <div class="sum-item"><span class="label">Alpha</span><span class="val val-alpha">${alpha}</span></div>
-                </div>
-
-                <!-- TABLE -->
-                <table>
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th style="width:72px;">Tanggal</th>
-                            <th style="width:130px;">Nama Karyawan</th>
-                            <th style="width:44px; text-align:center;">Masuk</th>
-                            <th style="width:50px; text-align:center;">Istirahat</th>
-                            <th style="width:44px; text-align:center;">Selesai</th>
-                            <th style="width:44px; text-align:center;">Pulang</th>
-                            <th style="width:120px;">Jam Kerja</th>
-                            <th style="width:70px; text-align:center;">Istirahat</th>
-                            <th style="width:90px;">Status</th>
-                            <th>Keterangan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-
-                <!-- SIGNATURE -->
-                <div class="signature-section">
-                    <div class="sig-box">
-                        <p class="sig-label">Diperiksa Oleh</p>
-                        <p class="sig-place">Karawang, ${format(new Date(), "d MMMM yyyy", { locale: id })}</p>
-                        <div class="sig-name">NIKO</div>
-                    </div>
-                    <div class="sig-box">
-                        <p class="sig-label">Disetujui Oleh</p>
-                        <p class="sig-place">Karawang, ${format(new Date(), "d MMMM yyyy", { locale: id })}</p>
-                        <div class="sig-name">CLAVERINA</div>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; ${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
-                </div>
-
-                <script>
-                    window.onload = () => { setTimeout(() => window.print(), 500); };
-                </script>
-            </body>
-        </html>`;
+  <script>window.onload = () => { setTimeout(() => window.print(), 500); };</script>
+</body>
+</html>`;
 
         printWindow.document.write(html);
         printWindow.document.close();
+    }
     };
 
     return (
