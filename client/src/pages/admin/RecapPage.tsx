@@ -268,8 +268,8 @@ export default function RecapPage() {
     };
 
     const handleExport = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
+        const now = new Date();
+        const fileName = `LAPORAN ABSENSI MANAJEMEN PT EJA - ${format(now, "EEEE, dd MMMM yyyy", { locale: id }).toUpperCase()} - ${format(now, "HH.mm")}.html`;
 
         const html = `<!DOCTYPE html>
 <html>
@@ -459,8 +459,7 @@ export default function RecapPage() {
     window.onload = function() {
       var btn = document.getElementById('dl-btn');
       if (btn) {
-        var blob = new Blob([document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
-        btn.href = URL.createObjectURL(blob);
+        btn.href = window.location.href;
         btn.download = _fn;
       }
       setTimeout(function() { window.print(); }, 600);
@@ -469,8 +468,9 @@ export default function RecapPage() {
 </body>
 </html>`;
 
-        printWindow.document.write(html);
-        printWindow.document.close();
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
     };
 
     return (
