@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, ArrowUpDown, Me
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { differenceInMinutes } from "date-fns";
-import { calculateDailyTotal, formatDuration, calculateDurationSeconds, formatDurationFull } from "@/lib/attendance";
+import { calculateDailyTotal, calculateDuration, formatDuration, calculateDurationSeconds, formatDurationFull } from "@/lib/attendance";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import { api } from "@shared/routes";
@@ -431,16 +431,14 @@ export default function RecapPage() {
                 (inTime !== '-' && outTime !== '-' && ((brkTime !== '-' && brkEnd === '-') || (brkTime === '-' && brkEnd !== '-') || (brkTime === '-' && brkEnd === '-')));
 
             const jamKerja = !isSameDayAndUser
-                ? (isSequenceIncomplete
-                    ? '<span class="note-warn" style="font-size:10px;">Data Absensi<br>Tidak Lengkap</span>'
-                    : (dailyIsComplete && dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-'))
+                ? (dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
                 : '';
 
             let keterangan = row.notes ? row.notes : '-';
             if (!row.checkOut) {
-                keterangan = row.notes ? row.notes + ' <span class="note-warn">(Belum Pulang)</span>' : '<span class="note-warn">Belum Pulang</span>';
+                keterangan = row.notes ? row.notes + ' <br><span class="note-warn">(Belum Pulang)</span>' : '<span class="note-warn">Belum Pulang</span>';
             } else if (isSequenceIncomplete) {
-                keterangan = row.notes ? row.notes + ' <span class="note-warn">(Data Absensi Tidak Lengkap)</span>' : '<span class="note-warn">Data Absensi Tidak Lengkap</span>';
+                keterangan = row.notes ? row.notes + ' <br><span class="note-warn">(Data Absensi Tidak Lengkap)</span>' : '<span class="note-warn">Data Absensi Tidak Lengkap</span>';
             }
             const lateNote = row.status === 'late' && (row as any).lateReason
                 ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
@@ -462,6 +460,91 @@ export default function RecapPage() {
         }).join('')}
     </tbody>
   </table>
+
+  ${(() => {
+                // Generate Summary Page
+                const usersSummary = new Map<number, { name: string, totalMins: number, breakdown: string[] }>();
+                const recordsByUser = new Map<number, typeof processedData>();
+                processedData.forEach(r => {
+                    if (!recordsByUser.has(r.userId)) recordsByUser.set(r.userId, []);
+                    recordsByUser.get(r.userId)!.push(r);
+                });
+
+                recordsByUser.forEach((records, userId) => {
+                    const name = getUserName(userId) || '-';
+                    const userSummary = { name, totalMins: 0, breakdown: [] as string[] };
+                    const recordsByDay = new Map<string, typeof processedData>();
+                    records.forEach(r => {
+                        const d = format(new Date(r.date), "yyyy-MM-dd");
+                        if (!recordsByDay.has(d)) recordsByDay.set(d, []);
+                        recordsByDay.get(d)!.push(r);
+                    });
+
+                    const days = Array.from(recordsByDay.keys()).sort();
+                    days.forEach(day => {
+                        const dayRecords = recordsByDay.get(day)!;
+                        const hasIn = dayRecords.some(r => r.checkIn);
+                        const hasBrkS = dayRecords.some(r => r.breakStart);
+                        const hasBrkE = dayRecords.some(r => r.breakEnd);
+                        const hasOut = dayRecords.some(r => r.checkOut);
+                        const isComplete = hasIn && hasBrkS && hasBrkE && hasOut;
+                        const dateStr = format(new Date(day), "dd/MM/yyyy");
+
+                        if (isComplete) {
+                            const { netWorkMins } = calculateDailyTotal(dayRecords);
+                            userSummary.totalMins += netWorkMins;
+
+                            const firstIn = dayRecords.map(r => r.checkIn).filter(Boolean).sort()[0];
+                            const lastOut = dayRecords.map(r => r.checkOut).filter(Boolean).sort().reverse()[0];
+                            const inTimeStr = firstIn ? format(new Date(firstIn), "HH.mm") : "";
+                            const outTimeStr = lastOut ? format(new Date(lastOut), "HH.mm") : "";
+
+                            const totalBreakMins = dayRecords.reduce((sum, r) => sum + (r.breakStart && r.breakEnd ? calculateDuration(r.breakStart, r.breakEnd) : 0), 0);
+                            const brkStr = totalBreakMins > 0 ? (totalBreakMins >= 60 ?\`\${Math.floor(totalBreakMins/60)} jam \${totalBreakMins%60} menit\` : \`\${totalBreakMins} menit\`) : \`0 jam\`;
+                        
+                        userSummary.breakdown.push(\`<span style="color:#1e293b;font-weight:600;">\${dateStr}</span> : Kerja jam \${inTimeStr} - jam \${outTimeStr} istirahat \${brkStr} (Total: \${formatDuration(netWorkMins)})\`);
+                    } else {
+                        userSummary.breakdown.push(\`<span style="color:#dc2626;font-weight:600;">\${dateStr}</span> : <span style="color:#b91c1c;">Absensi tidak lengkap</span>\`);
+                    }
+                });
+                usersSummary.set(userId, userSummary);
+            });
+
+            let sumHtml = \`<div style="page-break-before: always; padding-top: 20px;">
+              <div class="report-meta">
+                <h2>Rekapitulasi Total Jam Kerja</h2>
+                <p class="sub">Tipe: \${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+                <p class="sub">Periode: \${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - \${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+                <p class="sub" style="font-size:9.5px;color:#ef4444;margin-top:6px;max-width:400px;margin-left:auto;margin-right:auto;">
+                  *Hanya menghitung jam kerja jika karyawan melakukan minimal: absen masuk, mulai istirahat, selesai istirahat, & absen pulang dalam 1 hari.
+                </p>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="c" style="width:40px;">No</th>
+                    <th style="width:180px;">Nama Karyawan</th>
+                    <th class="c" style="width:100px;">Total Jam Kerja</th>
+                    <th>Rincian Harian</th>
+                  </tr>
+                </thead>
+                <tbody>\`;
+            
+            let sumIdx = 1;
+            usersSummary.forEach((summary) => {
+                const rowMins = summary.totalMins;
+                const rowHoursStr = rowMins > 0 ? formatDuration(rowMins) : \`-\`;
+                sumHtml += \`<tr>
+                    <td class="col-no">\${sumIdx++}</td>
+                    <td class="col-name">\${summary.name}</td>
+                    <td class="c" style="font-weight:bold;font-size:12px;">\${rowHoursStr}</td>
+                    <td style="font-size:10.5px;line-height:1.6;padding-bottom:12px;padding-top:12px;white-space:normal;">\${summary.breakdown.join('<br>')}</td>
+                  </tr>\`;
+            });
+            
+            sumHtml += \`</tbody></table></div>\`;
+            return sumHtml;
+        })()}
 
   <div class="signature-section">
     <div class="sig-box">
@@ -497,521 +580,512 @@ export default function RecapPage() {
 </body>
 </html>`;
 
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-    };
+                            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                            const blobUrl = URL.createObjectURL(blob);
+                            window.open(blobUrl, '_blank');
+                        };
 
-    return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <header className="bg-white border-b border-gray-200 p-4 px-8 flex items-center justify-between sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management PT ELOK JAYA ABADHI</h1>
-                </div>
-                <div className="flex items-center gap-2 bg-white border rounded-md p-1">
-                    <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
-                        <SelectTrigger className="w-[120px] h-8 border-none bg-transparent">
-                            <SelectValue placeholder="Tipe Laporan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="daily">Harian</SelectItem>
-                            <SelectItem value="weekly">Mingguan</SelectItem>
-                            <SelectItem value="monthly">Bulanan</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                    <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium min-w-[120px] text-center">
-                        {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
-                                format(targetDate, "MMMM yyyy", { locale: id })}
-                    </span>
-                    <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </header>
+                        return (
+                            <div className="min-h-screen bg-gray-50 flex flex-col">
+                                <header className="bg-white border-b border-gray-200 p-4 px-8 flex items-center justify-between sticky top-0 z-10">
+                                    <div className="flex items-center gap-4">
+                                        <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
+                                            <ArrowLeft className="h-5 w-5" />
+                                        </Button>
+                                        <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management PT ELOK JAYA ABADHI</h1>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white border rounded-md p-1">
+                                        <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
+                                            <SelectTrigger className="w-[120px] h-8 border-none bg-transparent">
+                                                <SelectValue placeholder="Tipe Laporan" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="daily">Harian</SelectItem>
+                                                <SelectItem value="weekly">Mingguan</SelectItem>
+                                                <SelectItem value="monthly">Bulanan</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
+                                        <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <span className="text-sm font-medium min-w-[120px] text-center">
+                                            {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                                reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
+                                                    format(targetDate, "MMMM yyyy", { locale: id })}
+                                        </span>
+                                        <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </header>
 
-            <main className="p-8 flex-1 overflow-auto">
-                <Card className="border-none shadow-sm">
-                    <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="space-y-1">
-                            <CardTitle>Laporan Bulanan</CardTitle>
-                            <p className="text-sm text-gray-500">
-                                Periode: {format(startDate, "EEEE, d MMM yyyy", { locale: id })} - {format(endDate, "EEEE, d MMM yyyy", { locale: id })}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <div className="relative flex-1 md:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Cari nama..."
-                                    className="pl-9"
-                                    value={searchName}
-                                    onChange={(e) => setSearchName(e.target.value)}
-                                />
-                            </div>
-                            <Button variant="outline" className="gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100" onClick={() => handleOpenManualModal()}>
-                                <Plus className="h-4 w-4" /> Input Manual
-                            </Button>
-                            <Button variant="outline" className="gap-2" onClick={handleExport}>
-                                <FileDown className="h-4 w-4" /> Export
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="rounded-lg border overflow-hidden">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 text-gray-700 font-semibold uppercase text-xs">
-                                    <tr>
-                                        <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => toggleSort('date')}>
-                                            <div className="flex items-center gap-1">Tanggal <ArrowUpDown className="h-3 w-3" /></div>
-                                        </th>
-                                        <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => toggleSort('name')}>
-                                            <div className="flex items-center gap-1">Nama Karyawan <ArrowUpDown className="h-3 w-3" /></div>
-                                        </th>
-                                        <th className="px-4 py-3">Masuk</th>
-                                        <th className="px-4 py-3">Istirahat</th>
-                                        <th className="px-4 py-3">Selesai</th>
-                                        <th className="px-4 py-3">Pulang</th>
-                                        <th className="px-4 py-3">Jam Kerja</th>
-                                        <th className="px-4 py-3">Total Istirahat</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Keterangan</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {processedData.map((row, index) => {
-                                        // Calculate per-session stats
-                                        const { netWorkMins: sessionNetMins, totalBreakMins: sessionBreakMins } = calculateDailyTotal([row]);
+                                <main className="p-8 flex-1 overflow-auto">
+                                    <Card className="border-none shadow-sm">
+                                        <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                            <div className="space-y-1">
+                                                <CardTitle>Laporan Bulanan</CardTitle>
+                                                <p className="text-sm text-gray-500">
+                                                    Periode: {format(startDate, "EEEE, d MMM yyyy", { locale: id })} - {format(endDate, "EEEE, d MMM yyyy", { locale: id })}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                                <div className="relative flex-1 md:w-64">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                    <Input
+                                                        placeholder="Cari nama..."
+                                                        className="pl-9"
+                                                        value={searchName}
+                                                        onChange={(e) => setSearchName(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button variant="outline" className="gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100" onClick={() => handleOpenManualModal()}>
+                                                    <Plus className="h-4 w-4" /> Input Manual
+                                                </Button>
+                                                <Button variant="outline" className="gap-2" onClick={handleExport}>
+                                                    <FileDown className="h-4 w-4" /> Export
+                                                </Button>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="rounded-lg border overflow-hidden">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-gray-50 text-gray-700 font-semibold uppercase text-xs">
+                                                        <tr>
+                                                            <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => toggleSort('date')}>
+                                                                <div className="flex items-center gap-1">Tanggal <ArrowUpDown className="h-3 w-3" /></div>
+                                                            </th>
+                                                            <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => toggleSort('name')}>
+                                                                <div className="flex items-center gap-1">Nama Karyawan <ArrowUpDown className="h-3 w-3" /></div>
+                                                            </th>
+                                                            <th className="px-4 py-3">Masuk</th>
+                                                            <th className="px-4 py-3">Istirahat</th>
+                                                            <th className="px-4 py-3">Selesai</th>
+                                                            <th className="px-4 py-3">Pulang</th>
+                                                            <th className="px-4 py-3">Jam Kerja</th>
+                                                            <th className="px-4 py-3">Total Istirahat</th>
+                                                            <th className="px-4 py-3">Status</th>
+                                                            <th className="px-4 py-3">Keterangan</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                        {processedData.map((row, index) => {
+                                                            // Calculate per-session stats
+                                                            const { netWorkMins: sessionNetMins, totalBreakMins: sessionBreakMins } = calculateDailyTotal([row]);
 
-                                        // Grouping Logic: Check if same as previous row
-                                        const dateStr = format(new Date(row.date), "yyyy-MM-dd");
-                                        const key = `${dateStr}-${row.userId}`;
+                                                            // Grouping Logic: Check if same as previous row
+                                                            const dateStr = format(new Date(row.date), "yyyy-MM-dd");
+                                                            const key = `${dateStr}-${row.userId}`;
 
-                                        const prevRow = index > 0 ? processedData[index - 1] : null;
-                                        const isSameDayAndUser = prevRow &&
-                                            format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
-                                            prevRow.userId === row.userId;
+                                                            const prevRow = index > 0 ? processedData[index - 1] : null;
+                                                            const isSameDayAndUser = prevRow &&
+                                                                format(new Date(prevRow.date), "yyyy-MM-dd") === dateStr &&
+                                                                prevRow.userId === row.userId;
 
-                                        return (
-                                            <tr key={row.id} className="hover:bg-gray-50/50">
-                                                <td className="px-4 py-3 text-gray-900 font-medium relative">
-                                                    {isSameDayAndUser ? (
-                                                        <div className="absolute left-8 top-0 h-full w-px bg-gray-200"></div> /* Connector */
-                                                    ) : (
-                                                        format(new Date(row.date), "dd/MM/yyyy")
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-700">
-                                                    {isSameDayAndUser ? "" : getUserName(row.userId)}
-                                                </td>
-                                                <td className="px-4 py-3 text-green-600 font-mono">
-                                                    {row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}
-                                                </td>
-                                                <td className="px-4 py-3 text-green-600 font-mono">
-                                                    {row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}
-                                                </td>
-                                                <td className="px-4 py-3 text-green-600 font-mono">
-                                                    {row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}
-                                                </td>
-                                                <td className="px-4 py-3 text-red-600 font-mono">
-                                                    {row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {!isSameDayAndUser && (() => {
-                                                        const daily = dailyTotals.get(key);
-                                                        const inTime = row.checkIn ? 'yes' : '-';
-                                                        const outTime = row.checkOut ? 'yes' : '-';
-                                                        const brkStart = row.breakStart ? 'yes' : '-';
-                                                        const brkEnd = row.breakEnd ? 'yes' : '-';
-                                                        const isSequenceIncomplete = (inTime !== '-' && !row.checkOut) ||
-                                                            (inTime !== '-' && outTime !== '-' && ((brkStart !== '-' && brkEnd === '-') || (brkStart === '-' && brkEnd !== '-') || (brkStart === '-' && brkEnd === '-')));
+                                                            return (
+                                                                <tr key={row.id} className="hover:bg-gray-50/50">
+                                                                    <td className="px-4 py-3 text-gray-900 font-medium relative">
+                                                                        {isSameDayAndUser ? (
+                                                                            <div className="absolute left-8 top-0 h-full w-px bg-gray-200"></div> /* Connector */
+                                                                        ) : (
+                                                                            format(new Date(row.date), "dd/MM/yyyy")
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-gray-700">
+                                                                        {isSameDayAndUser ? "" : getUserName(row.userId)}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-green-600 font-mono">
+                                                                        {row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-green-600 font-mono">
+                                                                        {row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-green-600 font-mono">
+                                                                        {row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-red-600 font-mono">
+                                                                        {row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        {!isSameDayAndUser && (() => {
+                                                                            const daily = dailyTotals.get(key);
+                                                                            const inTime = row.checkIn ? 'yes' : '-';
+                                                                            const outTime = row.checkOut ? 'yes' : '-';
+                                                                            const brkStart = row.breakStart ? 'yes' : '-';
+                                                                            const brkEnd = row.breakEnd ? 'yes' : '-';
+                                                                            const isSequenceIncomplete = (inTime !== '-' && !row.checkOut) ||
+                                                                                (inTime !== '-' && outTime !== '-' && ((brkStart !== '-' && brkEnd === '-') || (brkStart === '-' && brkEnd !== '-') || (brkStart === '-' && brkEnd === '-')));
 
-                                                        const showTotal = daily?.complete && (daily?.mins ?? 0) > 0 && !isSequenceIncomplete;
-
-                                                        return (
-                                                            <div className="text-gray-900 font-bold mb-1 text-xs">
-                                                                {isSequenceIncomplete ? (
-                                                                    <span className="text-orange-600 font-bold leading-tight block">Data Absensi<br />Tidak Lengkap</span>
-                                                                ) : (
-                                                                    <>
-                                                                        Total: {showTotal ? formatDuration(daily!.mins) : "-"}
-                                                                        {!row.checkOut && <span className="ml-1 text-[10px] text-yellow-600 font-semibold">(Belum Absen Pulang)</span>}
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                    <div className="text-xs text-gray-500 mt-1">
-                                                        {(() => {
-                                                            const brkS = row.breakStart ? 'yes' : '-';
-                                                            const brkE = row.breakEnd ? 'yes' : '-';
-                                                            const isSeqIncomplete = (!row.checkOut) || (row.checkIn && row.checkOut && ((brkS !== '-' && brkE === '-') || (brkS === '-' && brkE !== '-') || (brkS === '-' && brkE === '-')));
-                                                            if (!row.checkOut) return <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span>;
-                                                            if (isSeqIncomplete) return <span className="text-orange-600 font-semibold text-[10px]">Urutan Absen Terputus</span>;
-                                                            return <>Sesi: {formatDuration(sessionNetMins)}</>;
-                                                        })()}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-gray-500">
-                                                    {(() => {
-                                                        const secs = calculateDurationSeconds(row.breakStart, row.breakEnd);
-                                                        return secs > 0 ? formatDurationFull(secs) : "-";
-                                                    })()}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                                                                            return (
+                                                                                <div className="text-gray-900 font-bold mb-1 text-xs">
+                                                                                    Total: {daily!.mins > 0 ? formatDuration(daily!.mins) : "-"}
+                                                                                </div>
+                                                                            );
+                                                                        })()}
+                                                                        <div className="text-xs text-gray-500 mt-1">
+                                                                            {(() => {
+                                                                                const brkS = row.breakStart ? 'yes' : '-';
+                                                                                const brkE = row.breakEnd ? 'yes' : '-';
+                                                                                const isSeqIncomplete = (!row.checkOut) || (row.checkIn && row.checkOut && ((brkS !== '-' && brkE === '-') || (brkS === '-' && brkE !== '-') || (brkS === '-' && brkE === '-')));
+                                                                                if (!row.checkOut) return <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span>;
+                                                                                if (isSeqIncomplete) return <span className="text-orange-600 font-semibold text-[10px]">Urutan Absen Terputus</span>;
+                                                                                return <>Sesi: {formatDuration(sessionNetMins)}</>;
+                                                                            })()}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-xs text-gray-500">
+                                                                        {(() => {
+                                                                            const secs = calculateDurationSeconds(row.breakStart, row.breakEnd);
+                                                                            return secs > 0 ? formatDurationFull(secs) : "-";
+                                                                        })()}
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold
                                                 ${row.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                            row.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                row.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                    row.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                        row.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                                                            'bg-gray-100 text-gray-700'}`}>
-                                                        {row.status === 'present' ? 'Hadir' :
-                                                            row.status === 'late' ? 'Telat' :
-                                                                row.status === 'sick' ? 'Sakit' :
-                                                                    row.status === 'permission' ? 'Izin' :
-                                                                        row.status === 'cuti' ? 'Cuti' :
-                                                                            row.status === 'absent' ? 'Alpha' : row.status}
-                                                        {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-500 italic max-w-xs">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-1">
-                                                            <span className={!row.checkOut ? "text-yellow-600 font-semibold" : ""}>
-                                                                {row.notes ? row.notes : (!row.checkOut ? "Belum Absen Pulang" : "-")}
-                                                            </span>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 text-gray-400 hover:text-green-600"
-                                                                onClick={() => handleOpenManualModal(row)}
-                                                            >
-                                                                <Edit2 className="h-3 w-3" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 text-gray-400 hover:text-red-600"
-                                                                onClick={() => setDeleteConfirmId(row.id)}
-                                                            >
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                        {((row as any).lateReason || (row as any).checkInPhoto || (row as any).checkOutPhoto || (row as any).lateReasonPhoto) && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-auto p-0 text-[11px] text-blue-600 hover:text-blue-700 hover:bg-transparent justify-start font-bold uppercase tracking-tight flex items-center gap-1.5"
-                                                                onClick={() => setSelectedPhotoRecord(row)}
-                                                            >
-                                                                <Camera className="h-3 w-3" />
-                                                                Lihat Detail Foto
-                                                            </Button>
+                                                                                row.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                                    row.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                                        row.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                                            row.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                                                'bg-gray-100 text-gray-700'}`}>
+                                                                            {row.status === 'present' ? 'Hadir' :
+                                                                                row.status === 'late' ? 'Telat' :
+                                                                                    row.status === 'sick' ? 'Sakit' :
+                                                                                        row.status === 'permission' ? 'Izin' :
+                                                                                            row.status === 'cuti' ? 'Cuti' :
+                                                                                                row.status === 'absent' ? 'Alpha' : row.status}
+                                                                            {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-gray-500 italic max-w-xs">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className={!row.checkOut ? "text-yellow-600 font-semibold" : ""}>
+                                                                                    {row.notes ? row.notes : (!row.checkOut ? "Belum Absen Pulang" : "-")}
+                                                                                </span>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-6 w-6 text-gray-400 hover:text-green-600"
+                                                                                    onClick={() => handleOpenManualModal(row)}
+                                                                                >
+                                                                                    <Edit2 className="h-3 w-3" />
+                                                                                </Button>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
+                                                                                    onClick={() => setDeleteConfirmId(row.id)}
+                                                                                >
+                                                                                    <Trash2 className="h-3 w-3" />
+                                                                                </Button>
+                                                                            </div>
+                                                                            {((row as any).lateReason || (row as any).checkInPhoto || (row as any).checkOutPhoto || (row as any).lateReasonPhoto) && (
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className="h-auto p-0 text-[11px] text-blue-600 hover:text-blue-700 hover:bg-transparent justify-start font-bold uppercase tracking-tight flex items-center gap-1.5"
+                                                                                    onClick={() => setSelectedPhotoRecord(row)}
+                                                                                >
+                                                                                    <Camera className="h-3 w-3" />
+                                                                                    Lihat Detail Foto
+                                                                                </Button>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                        {processedData.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
+                                                                    Tidak ada data absensi untuk periode ini.
+                                                                </td>
+                                                            </tr>
                                                         )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </main>
+
+                                <Dialog open={!!selectedPhotoRecord} onOpenChange={(open) => !open && setSelectedPhotoRecord(null)}>
+                                    <DialogContent className="sm:max-w-md bg-white border-zinc-200 text-zinc-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle className="text-xl font-black text-blue-600 uppercase">Detail Bukti & Keterangan</DialogTitle>
+                                            <DialogDescription className="text-zinc-500">
+                                                Detail alasan dan bukti foto yang dikirimkan karyawan.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        {selectedPhotoRecord && (
+                                            <div className="space-y-4 mt-2">
+                                                <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Karyawan</p>
+                                                    <p className="font-bold text-zinc-800">{getUserName(selectedPhotoRecord.userId)}</p>
+                                                    <p className="text-xs text-zinc-500 font-medium">
+                                                        Tanggal Absen: {format(new Date(selectedPhotoRecord.date), "dd MMMM yyyy", { locale: id })}
+                                                    </p>
+                                                </div>
+
+                                                {/* Alasan Terlambat & Foto Alasan */}
+                                                {(selectedPhotoRecord as any).lateReason && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Alasan Keterlambatan</p>
+                                                        <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 min-h-[60px]">
+                                                            <p className="text-sm text-zinc-700 leading-relaxed">{(selectedPhotoRecord as any).lateReason}</p>
+                                                        </div>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {processedData.length === 0 && (
-                                        <tr>
-                                            <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
-                                                Tidak ada data absensi untuk periode ini.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </main>
+                                                )}
+                                                {(selectedPhotoRecord as any).lateReasonPhoto && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Terlambar (Foto)</p>
+                                                        <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                                            <img
+                                                                src={(() => {
+                                                                    const p = (selectedPhotoRecord as any).lateReasonPhoto;
+                                                                    if (!p) return '';
+                                                                    if (p.startsWith('data:')) return p;
+                                                                    if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                                        return `/api/images/${p}`;
+                                                                    return `/uploads/${p}`;
+                                                                })()}
+                                                                alt="Bukti Telat"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
 
-            <Dialog open={!!selectedPhotoRecord} onOpenChange={(open) => !open && setSelectedPhotoRecord(null)}>
-                <DialogContent className="sm:max-w-md bg-white border-zinc-200 text-zinc-900 rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black text-blue-600 uppercase">Detail Bukti & Keterangan</DialogTitle>
-                        <DialogDescription className="text-zinc-500">
-                            Detail alasan dan bukti foto yang dikirimkan karyawan.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {selectedPhotoRecord && (
-                        <div className="space-y-4 mt-2">
-                            <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Karyawan</p>
-                                <p className="font-bold text-zinc-800">{getUserName(selectedPhotoRecord.userId)}</p>
-                                <p className="text-xs text-zinc-500 font-medium">
-                                    Tanggal Absen: {format(new Date(selectedPhotoRecord.date), "dd MMMM yyyy", { locale: id })}
-                                </p>
+                                                {/* Foto Masuk */}
+                                                {(selectedPhotoRecord as any).checkInPhoto && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-In (Masuk)</p>
+                                                        <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                                            <img
+                                                                src={(() => {
+                                                                    const p = (selectedPhotoRecord as any).checkInPhoto;
+                                                                    if (!p) return '';
+                                                                    if (p.startsWith('data:')) return p;
+                                                                    if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                                        return `/api/images/${p}`;
+                                                                    return `/uploads/${p}`;
+                                                                })()}
+                                                                alt="Bukti Check-In"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Foto Pulang */}
+                                                {(selectedPhotoRecord as any).checkOutPhoto && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-Out (Pulang)</p>
+                                                        <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
+                                                            <img
+                                                                src={(() => {
+                                                                    const p = (selectedPhotoRecord as any).checkOutPhoto;
+                                                                    if (!p) return '';
+                                                                    if (p.startsWith('data:')) return p;
+                                                                    if (!p.includes('/') && !p.includes('.') && p.length > 20)
+                                                                        return `/api/images/${p}`;
+                                                                    return `/uploads/${p}`;
+                                                                })()}
+                                                                alt="Bukti Check-Out"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="pt-4">
+                                            <Button
+                                                className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl h-12"
+                                                onClick={() => setSelectedPhotoRecord(null)}
+                                            >
+                                                Tutup
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
+                                    <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle className="text-xl font-bold text-gray-900">
+                                                {editingAttendance ? "Edit Data Absensi" : "Input Absensi Manual"}
+                                            </DialogTitle>
+                                            <DialogDescription>
+                                                Gunakan ini untuk koreksi data atau input jika karyawan cuti/tidak absen.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Pilih Karyawan</Label>
+                                                <Select
+                                                    value={manualEntry.userId}
+                                                    onValueChange={(v) => setManualEntry(prev => ({ ...prev, userId: v }))}
+                                                    disabled={!!editingAttendance}
+                                                >
+                                                    <SelectTrigger className="rounded-xl border-gray-200 h-10">
+                                                        <SelectValue placeholder="Pilih karyawan..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {users?.filter(u => u.role === 'employee').map(u => (
+                                                            <SelectItem key={u.id} value={String(u.id)}>{u.fullName} ({u.nik || "Tidak ada NIK"})</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Tanggal</Label>
+                                                    <Input
+                                                        type="date"
+                                                        value={manualEntry.date}
+                                                        onChange={(e) => setManualEntry(prev => ({ ...prev, date: e.target.value }))}
+                                                        className="rounded-xl border-gray-200"
+                                                        disabled={!!editingAttendance}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Shift</Label>
+                                                    <Select
+                                                        value={manualEntry.shift}
+                                                        onValueChange={(v) => setManualEntry(prev => ({ ...prev, shift: v }))}
+                                                    >
+                                                        <SelectTrigger className="rounded-xl border-gray-200">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Management">Management</SelectItem>
+                                                            <SelectItem value="Office">Office</SelectItem>
+                                                            <SelectItem value="Security">Security</SelectItem>
+                                                            <SelectItem value="Warehouse">Warehouse</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* Time fields */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Jam Masuk</Label>
+                                                    <Input
+                                                        type="time"
+                                                        value={manualEntry.checkIn}
+                                                        onChange={(e) => setManualEntry(prev => ({ ...prev, checkIn: e.target.value }))}
+                                                        className="rounded-xl border-gray-200"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Jam Pulang</Label>
+                                                    <Input
+                                                        type="time"
+                                                        value={manualEntry.checkOut}
+                                                        onChange={(e) => setManualEntry(prev => ({ ...prev, checkOut: e.target.value }))}
+                                                        className="rounded-xl border-gray-200"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Mulai Istirahat</Label>
+                                                    <Input
+                                                        type="time"
+                                                        value={manualEntry.breakStart}
+                                                        onChange={(e) => setManualEntry(prev => ({ ...prev, breakStart: e.target.value }))}
+                                                        className="rounded-xl border-gray-200"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Selesai Istirahat</Label>
+                                                    <Input
+                                                        type="time"
+                                                        value={manualEntry.breakEnd}
+                                                        onChange={(e) => setManualEntry(prev => ({ ...prev, breakEnd: e.target.value }))}
+                                                        className="rounded-xl border-gray-200"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Status Kehadiran</Label>
+                                                <Select
+                                                    value={manualEntry.status}
+                                                    onValueChange={(v) => setManualEntry(prev => ({ ...prev, status: v }))}
+                                                >
+                                                    <SelectTrigger className="rounded-xl border-gray-200">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="present">Hadir</SelectItem>
+                                                        <SelectItem value="late">Telat</SelectItem>
+                                                        <SelectItem value="sick">Sakit</SelectItem>
+                                                        <SelectItem value="permission">Izin</SelectItem>
+                                                        <SelectItem value="cuti">Cuti</SelectItem>
+                                                        <SelectItem value="absent">Alpha</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Keterangan (Notes)</Label>
+                                                <Textarea
+                                                    placeholder="Masukkan alasan atau catatan..."
+                                                    value={manualEntry.notes}
+                                                    onChange={(e) => setManualEntry(prev => ({ ...prev, notes: e.target.value }))}
+                                                    className="rounded-xl border-gray-200 resize-none h-20"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 pt-2">
+                                            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setIsManualModalOpen(false)}>
+                                                Batal
+                                            </Button>
+                                            <Button
+                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 font-bold"
+                                                onClick={() => {
+                                                    if (!manualEntry.userId) return toast({ title: "Error", description: "Pilih karyawan terlebih dahulu", variant: "destructive" });
+                                                    manualMutation.mutate({
+                                                        ...manualEntry,
+                                                        userId: parseInt(manualEntry.userId),
+                                                        date: manualEntry.date,
+                                                    });
+                                                }}
+                                                disabled={manualMutation.isPending}
+                                            >
+                                                {manualMutation.isPending ? "Menyimpan..." : "Simpan Data"}
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+
+                                {/* Delete Confirmation Dialog */}
+                                <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+                                    <DialogContent className="sm:max-w-xs bg-white rounded-3xl p-6">
+                                        <DialogHeader>
+                                            <DialogTitle className="text-lg font-bold text-red-600">Hapus Data Absensi?</DialogTitle>
+                                            <DialogDescription>
+                                                Data absensi ini akan dihapus permanen dan tidak bisa dikembalikan.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="flex gap-3 pt-4">
+                                            <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setDeleteConfirmId(null)}>
+                                                Batal
+                                            </Button>
+                                            <Button
+                                                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl h-11 font-bold"
+                                                onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
+                                                disabled={deleteMutation.isPending}
+                                            >
+                                                {deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus"}
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
-
-                            {/* Alasan Terlambat & Foto Alasan */}
-                            {(selectedPhotoRecord as any).lateReason && (
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Alasan Keterlambatan</p>
-                                    <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 min-h-[60px]">
-                                        <p className="text-sm text-zinc-700 leading-relaxed">{(selectedPhotoRecord as any).lateReason}</p>
-                                    </div>
-                                </div>
-                            )}
-                            {(selectedPhotoRecord as any).lateReasonPhoto && (
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Terlambar (Foto)</p>
-                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
-                                        <img
-                                            src={(() => {
-                                                const p = (selectedPhotoRecord as any).lateReasonPhoto;
-                                                if (!p) return '';
-                                                if (p.startsWith('data:')) return p;
-                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `/api/images/${p}`;
-                                                return `/uploads/${p}`;
-                                            })()}
-                                            alt="Bukti Telat"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Foto Masuk */}
-                            {(selectedPhotoRecord as any).checkInPhoto && (
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-In (Masuk)</p>
-                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
-                                        <img
-                                            src={(() => {
-                                                const p = (selectedPhotoRecord as any).checkInPhoto;
-                                                if (!p) return '';
-                                                if (p.startsWith('data:')) return p;
-                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `/api/images/${p}`;
-                                                return `/uploads/${p}`;
-                                            })()}
-                                            alt="Bukti Check-In"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Foto Pulang */}
-                            {(selectedPhotoRecord as any).checkOutPhoto && (
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Bukti Check-Out (Pulang)</p>
-                                    <div className="aspect-video bg-zinc-100 rounded-2xl overflow-hidden border border-zinc-200">
-                                        <img
-                                            src={(() => {
-                                                const p = (selectedPhotoRecord as any).checkOutPhoto;
-                                                if (!p) return '';
-                                                if (p.startsWith('data:')) return p;
-                                                if (!p.includes('/') && !p.includes('.') && p.length > 20)
-                                                    return `/api/images/${p}`;
-                                                return `/uploads/${p}`;
-                                            })()}
-                                            alt="Bukti Check-Out"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <div className="pt-4">
-                        <Button
-                            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl h-12"
-                            onClick={() => setSelectedPhotoRecord(null)}
-                        >
-                            Tutup
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
-                <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-gray-900">
-                            {editingAttendance ? "Edit Data Absensi" : "Input Absensi Manual"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Gunakan ini untuk koreksi data atau input jika karyawan cuti/tidak absen.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Pilih Karyawan</Label>
-                            <Select
-                                value={manualEntry.userId}
-                                onValueChange={(v) => setManualEntry(prev => ({ ...prev, userId: v }))}
-                                disabled={!!editingAttendance}
-                            >
-                                <SelectTrigger className="rounded-xl border-gray-200 h-10">
-                                    <SelectValue placeholder="Pilih karyawan..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users?.filter(u => u.role === 'employee').map(u => (
-                                        <SelectItem key={u.id} value={String(u.id)}>{u.fullName} ({u.nik || "Tidak ada NIK"})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Tanggal</Label>
-                                <Input
-                                    type="date"
-                                    value={manualEntry.date}
-                                    onChange={(e) => setManualEntry(prev => ({ ...prev, date: e.target.value }))}
-                                    className="rounded-xl border-gray-200"
-                                    disabled={!!editingAttendance}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Shift</Label>
-                                <Select
-                                    value={manualEntry.shift}
-                                    onValueChange={(v) => setManualEntry(prev => ({ ...prev, shift: v }))}
-                                >
-                                    <SelectTrigger className="rounded-xl border-gray-200">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Management">Management</SelectItem>
-                                        <SelectItem value="Office">Office</SelectItem>
-                                        <SelectItem value="Security">Security</SelectItem>
-                                        <SelectItem value="Warehouse">Warehouse</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Time fields */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Jam Masuk</Label>
-                                <Input
-                                    type="time"
-                                    value={manualEntry.checkIn}
-                                    onChange={(e) => setManualEntry(prev => ({ ...prev, checkIn: e.target.value }))}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Jam Pulang</Label>
-                                <Input
-                                    type="time"
-                                    value={manualEntry.checkOut}
-                                    onChange={(e) => setManualEntry(prev => ({ ...prev, checkOut: e.target.value }))}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Mulai Istirahat</Label>
-                                <Input
-                                    type="time"
-                                    value={manualEntry.breakStart}
-                                    onChange={(e) => setManualEntry(prev => ({ ...prev, breakStart: e.target.value }))}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Selesai Istirahat</Label>
-                                <Input
-                                    type="time"
-                                    value={manualEntry.breakEnd}
-                                    onChange={(e) => setManualEntry(prev => ({ ...prev, breakEnd: e.target.value }))}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Status Kehadiran</Label>
-                            <Select
-                                value={manualEntry.status}
-                                onValueChange={(v) => setManualEntry(prev => ({ ...prev, status: v }))}
-                            >
-                                <SelectTrigger className="rounded-xl border-gray-200">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="present">Hadir</SelectItem>
-                                    <SelectItem value="late">Telat</SelectItem>
-                                    <SelectItem value="sick">Sakit</SelectItem>
-                                    <SelectItem value="permission">Izin</SelectItem>
-                                    <SelectItem value="cuti">Cuti</SelectItem>
-                                    <SelectItem value="absent">Alpha</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Keterangan (Notes)</Label>
-                            <Textarea
-                                placeholder="Masukkan alasan atau catatan..."
-                                value={manualEntry.notes}
-                                onChange={(e) => setManualEntry(prev => ({ ...prev, notes: e.target.value }))}
-                                className="rounded-xl border-gray-200 resize-none h-20"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setIsManualModalOpen(false)}>
-                            Batal
-                        </Button>
-                        <Button
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 font-bold"
-                            onClick={() => {
-                                if (!manualEntry.userId) return toast({ title: "Error", description: "Pilih karyawan terlebih dahulu", variant: "destructive" });
-                                manualMutation.mutate({
-                                    ...manualEntry,
-                                    userId: parseInt(manualEntry.userId),
-                                    date: manualEntry.date,
-                                });
-                            }}
-                            disabled={manualMutation.isPending}
-                        >
-                            {manualMutation.isPending ? "Menyimpan..." : "Simpan Data"}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-                <DialogContent className="sm:max-w-xs bg-white rounded-3xl p-6">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-red-600">Hapus Data Absensi?</DialogTitle>
-                        <DialogDescription>
-                            Data absensi ini akan dihapus permanen dan tidak bisa dikembalikan.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex gap-3 pt-4">
-                        <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setDeleteConfirmId(null)}>
-                            Batal
-                        </Button>
-                        <Button
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl h-11 font-bold"
-                            onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
-                            disabled={deleteMutation.isPending}
-                        >
-                            {deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus"}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
-}
+                        );
+                    }

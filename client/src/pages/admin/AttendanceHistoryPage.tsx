@@ -3,14 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays, subDays, startOfWeek, endOfWeek, startOfDay, endOfDay, subMonths, addMonths, isAfter, isBefore, isEqual } from "date-fns";
 import { id } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin, ChevronLeft, ChevronRight
+    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin, ChevronLeft, ChevronRight, FileDown
 } from "lucide-react";
 
 // Helper: resolve photo URL — handles both local uploads and Google Drive File IDs
@@ -31,7 +32,8 @@ function getPhotoUrl(value: string | null): string {
 export default function AttendanceHistoryPage() {
     const [, setLocation] = useLocation();
     const { logout } = useAuth();
-    const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [targetDate, setTargetDate] = useState(new Date());
+    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("daily");
 
     const { data: attendanceHistory, isLoading: isLoadingAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
@@ -42,32 +44,277 @@ export default function AttendanceHistoryPage() {
         queryKey: ["/api/admin/users"],
     });
 
-    // Filter by selected date
-    const filteredRecords = attendanceHistory?.filter(
-        a => format(new Date(a.date), 'yyyy-MM-dd') === selectedDate
-    ) || [];
+    let startDate: Date;
+    let endDate: Date;
 
-    // Helper to get Employee Data
+    if (reportType === "daily") {
+        startDate = startOfDay(targetDate);
+        endDate = endOfDay(targetDate);
+    } else if (reportType === "weekly") {
+        startDate = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
+        endDate = endOfWeek(targetDate, { weekStartsOn: 1 });
+    } else {
+        // Default: 26th of previous month to 25th of current month
+        startDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 26);
+        endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 25);
+    }
+
+    const filteredRecords = attendanceHistory?.filter(att => {
+        const attDate = new Date(att.date);
+        const d = new Date(attDate);
+        d.setHours(0, 0, 0, 0);
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        const e = new Date(endDate);
+        e.setHours(23, 59, 59, 999);
+        return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+
     const getEmployee = (userId: number) => {
         return users?.find(user => user.id === userId);
     };
 
-    // Helper to extract File ID from Google Drive URL and generate a View Link
     const getDriveViewLink = (url: string | null) => {
         if (!url) return null;
         if (url.includes('drive.google.com')) return url;
         if (!url.includes('/') && url.length > 15) {
-            return `https://drive.google.com/file/d/${url}/view`;
+            return `/api/images/${url}`;
         }
-        return getPhotoUrl(url); // Fallback to photo URL to view in new tab
+        return getPhotoUrl(url);
     };
 
     const handlePrev = () => {
-        setSelectedDate(prev => format(subDays(new Date(prev), 1), 'yyyy-MM-dd'));
+        if (reportType === "daily") setTargetDate(d => subDays(d, 1));
+        else if (reportType === "weekly") setTargetDate(d => subDays(d, 7));
+        else setTargetDate(d => subMonths(d, 1));
     };
 
     const handleNext = () => {
-        setSelectedDate(prev => format(addDays(new Date(prev), 1), 'yyyy-MM-dd'));
+        if (reportType === "daily") setTargetDate(d => addDays(d, 1));
+        else if (reportType === "weekly") setTargetDate(d => addDays(d, 7));
+        else setTargetDate(d => addMonths(d, 1));
+    };
+
+    const handleExport = async () => {
+        let periodStr = '';
+        if (reportType === 'daily') {
+            periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+        } else if (reportType === 'weekly') {
+            periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+        } else {
+            periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
+        }
+
+        const fileName = `LAPORAN RIWAYAT ABSENSI & FOTO PT EJA - ${periodStr}.html`;
+
+        // Fetch logo
+        let logoDataUrl = '';
+        try {
+            const logoRes = await fetch('/logo_elok_buah.jpg');
+            const logoBlob = await logoRes.blob();
+            logoDataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(logoBlob);
+            });
+        } catch (_) { /* skip logo if unavailable */ }
+
+        // Fetch images as base64
+        const imageCache: Record<string, string> = {};
+        const fetchImageBase64 = async (url: string) => {
+            if (!url) return '';
+            if (url.startsWith('data:')) return url;
+            // Using drive proxy path format from getPhotoUrl
+            let resolvedUrl = url;
+            if (!url.includes('/') && !url.includes('.') && url.length > 20) {
+                resolvedUrl = `/api/images/${url}`;
+            } else if (!url.startsWith('http')) {
+                resolvedUrl = `/uploads/${url}`;
+            }
+            if (imageCache[resolvedUrl]) return imageCache[resolvedUrl];
+            try {
+                const res = await fetch(resolvedUrl);
+                const blob = await res.blob();
+                const b64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+                imageCache[resolvedUrl] = b64;
+                return b64;
+            } catch (e) {
+                return '';
+            }
+        };
+
+        // Prepare HTML
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${fileName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: white; padding: 28px 36px; }
+    
+    .letterhead { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; }
+    .logo-img { width: 60px; height: 60px; object-fit: contain; }
+    .company-block h1 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #1e293b; }
+    .company-block .tagline { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .hr-thick { border: none; border-top: 2px solid #cbd5e1; margin: 6px 0 2px; }
+    .hr-thin  { border: none; border-top: 1px solid #e2e8f0; margin-bottom: 18px; }
+
+    .report-meta { text-align: center; margin-bottom: 20px; }
+    .report-meta h2 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #1e293b; }
+    .report-meta .sub { font-size: 10.5px; margin-top: 4px; color: #475569; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    thead tr { background-color: #f8fafc; }
+    th { color: #374151; font-weight: 700; text-align: left; padding: 8px 8px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 2px solid #1e293b; border-right: 1px solid #e2e8f0; }
+    th.c { text-align: center; }
+    td { padding: 8px 8px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; vertical-align: top; }
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
+
+    .photo-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .photo-item { width: 75px; text-align: center; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px; background: white; }
+    .photo-img { width: 100%; height: 65px; object-fit: cover; border-radius: 2px; }
+    .photo-label { font-size: 8px; font-weight: bold; color: #64748b; margin-top: 2px; text-transform: uppercase; }
+    
+    .status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px; text-transform: uppercase; margin-bottom: 4px; }
+    .st-hadir { background: #dcfce7; color: #16a34a; }
+    .st-telat { background: #ffedd5; color: #ea580c; }
+    .st-sakit { background: #dbeafe; color: #2563eb; }
+    .st-izin  { background: #f3e8ff; color: #7c3aed; }
+    .st-cuti  { background: #ccfbf1; color: #0d9488; }
+    .st-alpha { background: #fee2e2; color: #dc2626; }
+    .st-unknown { background: #f1f5f9; color: #475569; }
+
+    .btn-wrap { text-align: center; margin-top: 20px; }
+    .download-btn { display: inline-flex; align-items: center; gap: 8px; background: #1d4ed8; color: #fff; border: none; padding: 10px 28px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
+    
+    @media print {
+      body { padding: 12px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .btn-wrap { display: none !important; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="letterhead">
+    <img src="${logoDataUrl}" class="logo-img" alt="Logo" />
+    <div class="company-block">
+      <h1>PT Elok Jaya Abadhi</h1>
+      <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
+    </div>
+  </div>
+  <hr class="hr-thick" />
+  <hr class="hr-thin" />
+
+  <div class="report-meta">
+    <h2>Laporan Riwayat & Foto Absensi</h2>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+    <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th class="c" style="width:24px;">No</th>
+        <th style="width:65px;">Tanggal</th>
+        <th style="width:110px;">Nama Karyawan</th>
+        <th style="width:95px;">Waktu Absen</th>
+        <th style="width:120px;">Status & Keterangan</th>
+        <th>Bukti Foto (Visual)</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+        if (filteredRecords.length === 0) {
+            html += `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Tidak ada data absensi</td></tr>`;
+        }
+
+        for (let i = 0; i < filteredRecords.length; i++) {
+            const r = filteredRecords[i];
+            const emp = getEmployee(r.userId);
+
+            const sts = r.status || '-';
+            const statusLabel = sts === 'present' ? 'Hadir' : sts === 'late' ? 'Telat' : sts === 'sick' ? 'Sakit' : sts === 'permission' ? 'Izin' : sts === 'cuti' ? 'Cuti' : sts === 'absent' ? 'Alpha' : sts;
+            const statusClass = sts === 'present' ? 'st-hadir' : sts === 'late' ? 'st-telat' : sts === 'sick' ? 'st-sakit' : sts === 'permission' ? 'st-izin' : sts === 'cuti' ? 'st-cuti' : sts === 'absent' ? 'st-alpha' : 'st-unknown';
+
+            const tIn = r.checkIn ? format(new Date(r.checkIn), 'HH:mm') : '-';
+            const tBrkS = r.breakStart ? format(new Date(r.breakStart), 'HH:mm') : '-';
+            const tBrkE = r.breakEnd ? format(new Date(r.breakEnd), 'HH:mm') : '-';
+            const tOut = r.checkOut ? format(new Date(r.checkOut), 'HH:mm') : '-';
+
+            let photosHtml = '<div class="photo-grid">';
+            const addPhoto = async (url: string | null, label: string) => {
+                if (url) {
+                    const b64 = await fetchImageBase64(url);
+                    if (b64) {
+                        photosHtml += \`<div class="photo-item"><img src="\${b64}" class="photo-img"/><div class="photo-label">\${label}</div></div>\`;
+                    } else {
+                        photosHtml += \`<div class="photo-item"><div style="height:65px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;">No Image</div><div class="photo-label">\${label}</div></div>\`;
+                    }
+                }
+            };
+
+            await addPhoto(r.checkInPhoto, 'Masuk');
+            await addPhoto(r.breakStartPhoto, 'Mulai Ist.');
+            await addPhoto(r.breakEndPhoto, 'Selesai Ist.');
+            await addPhoto(r.checkOutPhoto, 'Pulang');
+            await addPhoto((r as any).lateReasonPhoto, 'Bukti Telat');
+            photosHtml += '</div>';
+            
+            if (photosHtml === '<div class="photo-grid"></div>') {
+                photosHtml = '<span style="color:#94a3b8;font-style:italic;font-size:9px;">Tidak ada bukti foto</span>';
+            }
+
+            let extraNotes = '';
+            if (r.notes) extraNotes += \`<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> \${r.notes}</div>\`;
+            if ((r as any).lateReason) extraNotes += \`<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Telat:\n</b> \${(r as any).lateReason}</div>\`;
+
+            html += \`<tr>
+                <td class="c">\${i + 1}</td>
+                <td>\${format(new Date(r.date), 'dd/MM/yyyy')}</td>
+                <td><b style="color:#1d4ed8;">\${emp?.fullName || '-'}</b></td>
+                <td style="font-family:monospace;font-size:11px;line-height:1.4;">
+                  IN : <span style="color:#16a34a;font-weight:bold;">\${tIn}</span><br/>
+                  BRK: <span style="color:#d97706;font-weight:bold;">\${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">\${tBrkE}</span><br/>
+                  OUT: <span style="color:#dc2626;font-weight:bold;">\${tOut}</span>
+                </td>
+                <td>
+                  <span class="status-badge \${statusClass}">\${statusLabel}</span>
+                  \${extraNotes}
+                </td>
+                <td>\${photosHtml}</td>
+            </tr>\`;
+        }
+
+        html += \`
+    </tbody>
+  </table>
+
+  <div class="btn-wrap">
+    <a id="dl-btn" class="download-btn" href="#">&#11015;&nbsp; Download File</a>
+  </div>
+
+  <script>
+    var _fn = "\${fileName}";
+    document.title = _fn;
+    window.onload = function() {
+      var btn = document.getElementById('dl-btn');
+      if (btn) {
+        btn.href = window.location.href;
+        btn.download = _fn;
+      }
+      setTimeout(function() { window.print(); }, 600);
+    };
+  </script>
+</body>
+</html>\`;
+
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
     };
 
     const SidebarContent = () => (
@@ -187,19 +434,37 @@ export default function AttendanceHistoryPage() {
             <main className="flex-1 p-4 md:p-8 overflow-auto">
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Riwayat Absensi</h2>
-                        <p className="text-sm text-gray-500">Lihat detail waktu, status, dan foto absensi karyawan</p>
+                        <h2 className="text-2xl font-bold text-gray-800">Riwayat Absensi & Foto</h2>
+                        <p className="text-sm text-gray-500">Lihat detail waktu, status, foto bukti absensi, dan cetak laporan.</p>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-white border rounded-md p-1 shadow-sm w-full md:w-auto">
-                        <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm font-medium min-w-[120px] text-center">
-                            {format(new Date(selectedDate), "d MMM yyyy", { locale: id })}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                            <ChevronRight className="h-4 w-4" />
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-2 bg-white border rounded-md p-1">
+                            <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
+                                <SelectTrigger className="w-[120px] h-8 border-none bg-transparent">
+                                    <SelectValue placeholder="Tipe Laporan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="daily">Harian</SelectItem>
+                                    <SelectItem value="weekly">Mingguan</SelectItem>
+                                    <SelectItem value="monthly">Bulanan</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
+                            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-medium min-w-[120px] text-center">
+                                {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                    reportType === 'weekly' ? `${ format(startDate, "d MMM") } - ${ format(endDate, "d MMM yyyy", { locale: id }) } ` :
+                                        format(targetDate, "MMMM yyyy", { locale: id })}
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Button variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" onClick={handleExport}>
+                            <FileDown className="h-4 w-4" /> Export HTML
                         </Button>
                     </div>
                 </header>
@@ -207,7 +472,7 @@ export default function AttendanceHistoryPage() {
                 <Card className="border-none shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between">
                         <CardTitle className="text-lg text-gray-800">
-                            Data Tanggal: {format(new Date(selectedDate), 'dd MMMM yyyy', { locale: id })}
+                            Data Periode: {format(startDate, 'dd MMM yyyy', { locale: id })} - {format(endDate, 'dd MMM yyyy', { locale: id })}
                         </CardTitle>
                         <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
                             {filteredRecords.length} Data Absensi
@@ -238,6 +503,8 @@ export default function AttendanceHistoryPage() {
                                             return (
                                                 <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
                                                     <td className="px-6 py-4">
+                                                        <div className="flex flex-col gap-1 items-start">
+                                                          <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
                                                                 {emp?.fullName?.charAt(0) || '?'}
@@ -246,6 +513,7 @@ export default function AttendanceHistoryPage() {
                                                                 <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
                                                                 <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
                                                             </div>
+                                                          </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
@@ -285,13 +553,15 @@ export default function AttendanceHistoryPage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-2 items-start max-w-[200px]">
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase
-                                                                ${record.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                                    record.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                        record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                            record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                                record.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                                                                    'bg-gray-100 text-gray-700'}`}>
+                                                            <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
+                                                                ${
+                            record.status === 'present' ? 'bg-green-100 text-green-700' :
+                            record.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                    record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                        record.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                            'bg-gray-100 text-gray-700'
+                        } `}>
                                                                 {record.status === 'present' ? 'Hadir' :
                                                                     record.status === 'late' ? 'Telat' :
                                                                         record.status === 'sick' ? 'Sakit' :
