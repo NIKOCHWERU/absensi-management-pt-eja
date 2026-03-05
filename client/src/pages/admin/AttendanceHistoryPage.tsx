@@ -250,9 +250,9 @@ export default function AttendanceHistoryPage() {
                 if (url) {
                     const b64 = await fetchImageBase64(url);
                     if (b64) {
-                        photosHtml += \`<div class="photo-item"><img src="\${b64}" class="photo-img"/><div class="photo-label">\${label}</div></div>\`;
+                        photosHtml += `<div class="photo-item"><img src="${b64}" class="photo-img"/><div class="photo-label">${label}</div></div>`;
                     } else {
-                        photosHtml += \`<div class="photo-item"><div style="height:65px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;">No Image</div><div class="photo-label">\${label}</div></div>\`;
+                        photosHtml += `<div class="photo-item"><div style="height:65px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;">No Image</div><div class="photo-label">${label}</div></div>`;
                     }
                 }
             };
@@ -263,33 +263,33 @@ export default function AttendanceHistoryPage() {
             await addPhoto(r.checkOutPhoto, 'Pulang');
             await addPhoto((r as any).lateReasonPhoto, 'Bukti Telat');
             photosHtml += '</div>';
-            
+
             if (photosHtml === '<div class="photo-grid"></div>') {
                 photosHtml = '<span style="color:#94a3b8;font-style:italic;font-size:9px;">Tidak ada bukti foto</span>';
             }
 
             let extraNotes = '';
-            if (r.notes) extraNotes += \`<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> \${r.notes}</div>\`;
-            if ((r as any).lateReason) extraNotes += \`<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Telat:\n</b> \${(r as any).lateReason}</div>\`;
+            if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
+            if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Telat:\n</b> ${(r as any).lateReason}</div>`;
 
-            html += \`<tr>
-                <td class="c">\${i + 1}</td>
-                <td>\${format(new Date(r.date), 'dd/MM/yyyy')}</td>
-                <td><b style="color:#1d4ed8;">\${emp?.fullName || '-'}</b></td>
+            html += `<tr>
+                <td class="c">${i + 1}</td>
+                <td>${format(new Date(r.date), 'dd/MM/yyyy')}</td>
+                <td><b style="color:#1d4ed8;">${emp?.fullName || '-'}</b></td>
                 <td style="font-family:monospace;font-size:11px;line-height:1.4;">
-                  IN : <span style="color:#16a34a;font-weight:bold;">\${tIn}</span><br/>
-                  BRK: <span style="color:#d97706;font-weight:bold;">\${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">\${tBrkE}</span><br/>
-                  OUT: <span style="color:#dc2626;font-weight:bold;">\${tOut}</span>
+                  IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
+                  BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
+                  OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span>
                 </td>
                 <td>
-                  <span class="status-badge \${statusClass}">\${statusLabel}</span>
-                  \${extraNotes}
+                  <span class="status-badge ${statusClass}">${statusLabel}</span>
+                  ${extraNotes}
                 </td>
-                <td>\${photosHtml}</td>
-            </tr>\`;
+                <td>${photosHtml}</td>
+            </tr>`;
         }
 
-        html += \`
+        html += `
     </tbody>
   </table>
 
@@ -298,7 +298,7 @@ export default function AttendanceHistoryPage() {
   </div>
 
   <script>
-    var _fn = "\${fileName}";
+    var _fn = "${fileName}";
     document.title = _fn;
     window.onload = function() {
       var btn = document.getElementById('dl-btn');
@@ -310,7 +310,7 @@ export default function AttendanceHistoryPage() {
     };
   </script>
 </body>
-</html>\`;
+</html>`;
 
         const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
         const blobUrl = URL.createObjectURL(blob);
@@ -456,7 +456,7 @@ export default function AttendanceHistoryPage() {
                             </Button>
                             <span className="text-sm font-medium min-w-[120px] text-center">
                                 {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                    reportType === 'weekly' ? `${ format(startDate, "d MMM") } - ${ format(endDate, "d MMM yyyy", { locale: id }) } ` :
+                                    reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
                                         format(targetDate, "MMMM yyyy", { locale: id })}
                             </span>
                             <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
@@ -504,16 +504,16 @@ export default function AttendanceHistoryPage() {
                                                 <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-1 items-start">
-                                                          <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
-                                                                {emp?.fullName?.charAt(0) || '?'}
+                                                            <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
+                                                                    {emp?.fullName?.charAt(0) || '?'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
+                                                                    <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
-                                                                <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
-                                                            </div>
-                                                          </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
@@ -554,14 +554,13 @@ export default function AttendanceHistoryPage() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-2 items-start max-w-[200px]">
                                                             <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
-                                                                ${
-                            record.status === 'present' ? 'bg-green-100 text-green-700' :
-                            record.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                    record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                        record.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                            'bg-gray-100 text-gray-700'
-                        } `}>
+                                                                ${record.status === 'present' ? 'bg-green-100 text-green-700' :
+                                                                    record.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                        record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                            record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                                record.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                                    'bg-gray-100 text-gray-700'
+                                                                } `}>
                                                                 {record.status === 'present' ? 'Hadir' :
                                                                     record.status === 'late' ? 'Telat' :
                                                                         record.status === 'sick' ? 'Sakit' :
