@@ -123,11 +123,41 @@ export default function EmployeeDashboard() {
 
     // ... (Keep existing getCoordinates logic)
     const lastLocationFetch = useRef<number>(0);
-    const getCoordinates = async (force = false): Promise<{ lat: number, lng: number, address: string }> => {
+    const lastLocationResult = useRef<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean } | null>(null);
+
+    // Heuristic fake GPS detection
+    function checkIsSuspicious(coords: GeolocationCoordinates): { suspicious: boolean; reasons: string[] } {
+        const reasons: string[] = [];
+
+        // Suspicious indicator: Accuracy is a perfect integer (real GPS rarely is)
+        if (coords.accuracy !== null && Number.isInteger(coords.accuracy) && coords.accuracy < 50) {
+            reasons.push(`Akurasi sempurna (${coords.accuracy}m) - biasanya dari aplikasi GPS palsu`);
+        }
+
+        // Suspicious indicator: accuracy is unrealistically precise (< 1m is almost impossible for regular GPS)
+        if (coords.accuracy !== null && coords.accuracy < 1.0) {
+            reasons.push(`Akurasi terlalu tinggi (${coords.accuracy}m) - tidak wajar untuk GPS biasa`);
+        }
+
+        // Suspicious indicator: altitude is null but accuracy is very high
+        if (coords.altitude === null && coords.accuracy !== null && coords.accuracy < 10) {
+            reasons.push(`Tidak ada data ketinggian meski akurasi tinggi - kemungkinan GPS simulasi`);
+        }
+
+        // Suspicious indicator: speed is exactly 0.0 but coordinates changed (always report 0 is a spoofing sign)
+        // We can't check previous coords here, but we flag exact 0 speed
+        if (coords.speed !== null && coords.speed === 0 && coords.accuracy !== null && coords.accuracy < 5) {
+            reasons.push(`Kecepatan 0 tepat dengan akurasi sangat tinggi - ciri GPS palsu`);
+        }
+
+        return { suspicious: reasons.length > 0, reasons };
+    }
+
+    const getCoordinates = async (force = false): Promise<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean }> => {
         const now = Date.now();
         // If we have a location fetched in the last 5 mins, reuse it unless forced
-        if (!force && locationAddress && (now - lastLocationFetch.current < 300000)) {
-            return { lat: 0, lng: 0, address: locationAddress };
+        if (!force && lastLocationResult.current && (now - lastLocationFetch.current < 300000)) {
+            return lastLocationResult.current;
         }
 
         if (!navigator.geolocation) {
@@ -144,7 +174,7 @@ export default function EmployeeDashboard() {
                 });
             });
 
-            const { latitude, longitude } = position.coords;
+            const { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed } = position.coords;
             let address = `${latitude},${longitude}`;
 
             try {
@@ -157,9 +187,31 @@ export default function EmployeeDashboard() {
                 console.error("Reverse geocoding failed", e);
             }
 
+            // Collect full metadata
+            const metadata = {
+                accuracy,
+                altitude,
+                altitudeAccuracy,
+                heading,
+                speed,
+                timestamp: position.timestamp,
+                userAgent: navigator.userAgent.substring(0, 100)
+            };
+            const locationMetadata = JSON.stringify(metadata);
+
+            // Run heuristic check
+            const { suspicious, reasons } = checkIsSuspicious(position.coords);
+
             setLocationAddress(address);
             lastLocationFetch.current = Date.now();
-            return { lat: latitude, lng: longitude, address };
+            const result = { lat: latitude, lng: longitude, address, locationMetadata, isSuspicious: suspicious };
+            lastLocationResult.current = result;
+
+            if (suspicious) {
+                console.warn('[FakeGPS] Suspicious location detected:', reasons);
+            }
+
+            return result;
         } catch (err: any) {
             if (err.code === 1) { // PERMISSION_DENIED
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -252,10 +304,11 @@ export default function EmployeeDashboard() {
         if (!activeAction) return;
 
         try {
-            const { address } = await getCoordinates(false);
+            const { address, locationMetadata, isSuspicious } = await getCoordinates(false);
             const payload: any = {
                 location: address,
-                checkInPhoto: photoData
+                checkInPhoto: photoData,
+                locationMetadata
             };
 
             if (lateReasonData) {
@@ -265,10 +318,12 @@ export default function EmployeeDashboard() {
 
             await activeAction.fn(payload);
 
+            const suspiciousWarning = isSuspicious ? ' ⚠️ Lokasi terdeteksi mencurigakan (kemungkinan GPS palsu).' : '';
+
             toast({
                 title: activeAction.successTitle,
-                description: `Lokasi: ${address}`,
-                className: "bg-green-500 text-white"
+                description: `Lokasi: ${address.substring(0, 80)}${suspiciousWarning}`,
+                className: isSuspicious ? "bg-orange-500 text-white" : "bg-green-500 text-white"
             });
 
             // Only close on success

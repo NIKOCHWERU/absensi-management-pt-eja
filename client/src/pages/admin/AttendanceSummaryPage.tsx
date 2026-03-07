@@ -5,11 +5,11 @@ import { id } from "date-fns/locale";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, Filter , Image as ImageIcon} from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, Filter, Image as ImageIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpDown , Image as ImageIcon} from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -518,8 +518,8 @@ export default function AttendanceSummaryPage() {
                                                     <div className="h-2 w-16 bg-gray-100 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full ${attendancePercentage >= 90 ? 'bg-green-500' :
-                                                                    attendancePercentage >= 75 ? 'bg-yellow-500' :
-                                                                        'bg-red-500'
+                                                                attendancePercentage >= 75 ? 'bg-yellow-500' :
+                                                                    'bg-red-500'
                                                                 }`}
                                                             style={{ width: `${Math.min(100, attendancePercentage)}%` }}
                                                         />

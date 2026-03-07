@@ -74,6 +74,27 @@ export default function AttendanceHistoryPage() {
         return users?.find(user => user.id === userId);
     };
 
+    // Parses GPS metadata JSON and returns a suspicious flag + summary string
+    const parseMetadataForSuspicion = (metadataJson: string | null | undefined): { isSuspicious: boolean; summary: string } => {
+        if (!metadataJson) return { isSuspicious: false, summary: '' };
+        try {
+            const m = JSON.parse(metadataJson);
+            const reasons: string[] = [];
+            if (m.accuracy !== null && m.accuracy !== undefined) {
+                if (Number.isInteger(m.accuracy) && m.accuracy < 50) reasons.push(`Akurasi bulat: ${m.accuracy}m`);
+                if (m.accuracy < 1.0) reasons.push(`Akurasi terlalu tinggi: ${m.accuracy}m`);
+                if (m.altitude === null && m.accuracy < 10) reasons.push(`Tidak ada data ketinggian`);
+                if (m.speed === 0 && m.accuracy < 5) reasons.push(`Kecepatan tepat 0 & akurasi tinggi`);
+            }
+            return {
+                isSuspicious: reasons.length > 0,
+                summary: reasons.length > 0 ? `⚠️ GPS Mencurigakan: ${reasons.join(', ')}` : `✅ GPS Normal (accuracy: ${m.accuracy}m)`
+            };
+        } catch {
+            return { isSuspicious: false, summary: '' };
+        }
+    };
+
     const getDriveViewLink = (url: string | null) => {
         if (!url) return null;
         if (url.includes('drive.google.com')) return url;
@@ -581,6 +602,19 @@ export default function AttendanceHistoryPage() {
                                                                     {(record as any).lateReason}
                                                                 </p>
                                                             )}
+                                                            {(() => {
+                                                                const meta = parseMetadataForSuspicion((record as any).checkInMetadata);
+                                                                if (!meta.isSuspicious) return null;
+                                                                return (
+                                                                    <div className="flex items-start gap-1.5 bg-orange-50 border border-orange-200 rounded-md p-2 w-full" title={meta.summary}>
+                                                                        <span className="text-orange-500 text-sm leading-none mt-0.5">⚠️</span>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-orange-700 uppercase">GPS Mencurigakan</p>
+                                                                            <p className="text-[9px] text-orange-600 mt-0.5">{meta.summary.replace('⚠️ GPS Mencurigakan: ', '')}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </td>
                                                 </tr>

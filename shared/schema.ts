@@ -27,18 +27,22 @@ export const attendance = mysqlTable("attendance", {
   checkIn: timestamp("check_in"),
   checkInPhoto: varchar("check_in_photo", { length: 255 }),
   checkInLocation: text("check_in_location"),
+  checkInMetadata: text("check_in_metadata"), // JSON string with accuracy, altitude, etc.
 
   breakStart: timestamp("break_start"),
   breakStartPhoto: varchar("break_start_photo", { length: 255 }),
   breakStartLocation: text("break_start_location"),
+  breakStartMetadata: text("break_start_metadata"),
 
   breakEnd: timestamp("break_end"),
   breakEndPhoto: varchar("break_end_photo", { length: 255 }),
   breakEndLocation: text("break_end_location"),
+  breakEndMetadata: text("break_end_metadata"),
 
   checkOut: timestamp("check_out"),
   checkOutPhoto: varchar("check_out_photo", { length: 255 }),
   checkOutLocation: text("check_out_location"),
+  checkOutMetadata: text("check_out_metadata"),
 
   shift: varchar("shift", { length: 50 }), // 'Shift 1', 'Shift 2', 'Shift 3', 'Long Shift'
   sessionNumber: int("session_number").default(1), // Track multiple sessions per day

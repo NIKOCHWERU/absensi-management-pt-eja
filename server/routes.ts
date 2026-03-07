@@ -148,6 +148,7 @@ export async function registerRoutes(
       const location = req.body.location;
       const shift = req.body.shift || 'Management'; // Default to Management if missing
       const lateReason = req.body.lateReason;
+      const locationMetadata = req.body.locationMetadata; // JSON string with accuracy, altitude, etc.
 
       let lateReasonPhotoId = undefined;
       if (req.body.lateReasonPhoto) {
@@ -198,6 +199,7 @@ export async function registerRoutes(
         status: status as any,
         checkInPhoto: photoFileId,
         checkInLocation: location,
+        checkInMetadata: locationMetadata,
         shift: shift,
         sessionNumber: nextSessionNumber,
         lateReason: lateReason,
@@ -227,11 +229,13 @@ export async function registerRoutes(
 
     const photoFileId = await handlePhotoUpload(req, 'clockOut');
     const location = req.body.location;
+    const locationMetadata = req.body.locationMetadata;
 
     const attendance = await storage.updateAttendance(existing.id, {
       checkOut: new Date(),
       checkOutPhoto: photoFileId,
       checkOutLocation: location,
+      checkOutMetadata: locationMetadata,
     });
 
     res.json(attendance);
@@ -252,11 +256,13 @@ export async function registerRoutes(
 
     const photoFileId = await handlePhotoUpload(req, 'breakStart');
     const location = req.body.location;
+    const locationMetadata = req.body.locationMetadata;
 
     const attendance = await storage.updateAttendance(existing.id, {
       breakStart: new Date(),
       breakStartPhoto: photoFileId,
       breakStartLocation: location,
+      breakStartMetadata: locationMetadata,
     });
 
     res.json(attendance);
@@ -277,11 +283,13 @@ export async function registerRoutes(
 
     const photoFileId = await handlePhotoUpload(req, 'breakEnd');
     const location = req.body.location;
+    const locationMetadata = req.body.locationMetadata;
 
     const attendance = await storage.updateAttendance(existing.id, {
       breakEnd: new Date(),
       breakEndPhoto: photoFileId,
       breakEndLocation: location,
+      breakEndMetadata: locationMetadata,
     });
 
     res.json(attendance);
@@ -625,7 +633,7 @@ export async function registerRoutes(
         record = await storage.createAttendance({
           userId,
           date: new Date(date),
-          status,
+          status: status as any,
           notes: notes || "",
           shift: shift || 'Management',
           sessionNumber: 1
@@ -643,7 +651,7 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid user ID" });
 
       const updates = { ...req.body };
