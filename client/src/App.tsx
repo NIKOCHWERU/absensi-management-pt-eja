@@ -115,13 +115,17 @@ function Router() {
   );
 }
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
