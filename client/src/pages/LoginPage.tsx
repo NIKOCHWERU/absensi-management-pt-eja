@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, User, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { Building2, User, Mail, Lock, Loader2, Eye, EyeOff, Download } from "lucide-react";
 import { useState } from "react";
 import { Redirect } from "wouter";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Wajib diisi"),
@@ -19,6 +20,11 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const { login, isLoggingIn, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const { isInstallable, installApp } = usePWAInstall();
+
+  if (user) {
+    return <Redirect to="/" />;
+  }
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -35,13 +41,22 @@ export default function LoginPage() {
     }
   }
 
-  if (user) {
-    return <Redirect to="/" />;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+
+        {isInstallable && (
+          <div className="flex justify-center mb-6">
+            <Button
+              onClick={installApp}
+              variant="outline"
+              className="rounded-full bg-white/80 backdrop-blur-sm border-orange-200 text-orange-700 hover:bg-orange-50 gap-2 shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              Pasang Aplikasi (Install App)
+            </Button>
+          </div>
+        )}
 
         <div className="text-center mb-8 space-y-2">
           <div className="inline-flex mb-4">
