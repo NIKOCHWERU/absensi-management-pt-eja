@@ -455,16 +455,13 @@ export default function EmployeeDashboard() {
         }
     };
 
-    const renderMainButton = () => {
+    const renderAttendanceSection = () => {
         // --- PERMIT / SICK STATE ---
-        // After permit or sick is submitted, today always has checkOut set (server always closes session).
-        // Show an informational card + "Lanjut Bekerja" option.
         if (today?.status === 'sick' || today?.status === 'permission') {
             const permitLabel = today.status === 'sick' ? 'Sakit' : 'Izin';
             const permitColor = today.status === 'sick' ? 'blue' : 'purple';
             return (
                 <div className="flex flex-col gap-3 w-full">
-                    {/* Info card */}
                     <div className={`rounded-2xl p-4 bg-${permitColor}-50 border border-${permitColor}-200 flex items-start gap-3`}>
                         <span className={`text-${permitColor}-500 text-2xl leading-none mt-0.5`}>
                             {today.status === 'sick' ? '🤒' : '📋'}
@@ -476,12 +473,8 @@ export default function EmployeeDashboard() {
                             <p className={`text-sm text-${permitColor}-600 font-medium mt-0.5`}>
                                 {today.notes || `Absensi ${permitLabel} hari ini sudah tercatat.`}
                             </p>
-                            <p className={`text-xs text-${permitColor}-400 mt-1`}>
-                                Jika sudah siap, Anda dapat melanjutkan bekerja di bawah ini.
-                            </p>
                         </div>
                     </div>
-                    {/* Lanjut Bekerja button — uses clockIn flow (photo + shift) */}
                     <Button
                         onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)}
                         disabled={isLoading || sessionCount >= 5}
@@ -494,9 +487,6 @@ export default function EmployeeDashboard() {
                             </>
                         )}
                     </Button>
-                    {sessionCount >= 5 && (
-                        <p className="text-center text-xs text-red-500 font-medium">Batas 5 sesi per hari tercapai</p>
-                    )}
                 </div>
             );
         }
@@ -507,9 +497,9 @@ export default function EmployeeDashboard() {
                 <div className="flex flex-col gap-3 w-full">
                     <Button
                         disabled
-                        className="w-full py-8 text-xl font-bold rounded-2xl shadow-lg bg-gray-200 text-gray-400"
+                        className="w-full h-14 text-lg font-bold rounded-xl shadow-lg bg-gray-200 text-gray-400"
                     >
-                        Sesi Hari Ini Selesai
+                        Sesi Selesai
                     </Button>
                     <Button
                         onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)}
@@ -523,14 +513,11 @@ export default function EmployeeDashboard() {
                             </>
                         )}
                     </Button>
-                    {sessionCount >= 5 && (
-                        <p className="text-center text-xs text-red-500 font-medium">Batas 5 sesi per hari tercapai</p>
-                    )}
                 </div>
             );
         }
 
-        // --- NOT YET CLOCKED IN ---
+        // --- ATTENDANCE TOGGLE (In vs Out) ---
         if (!hasCheckedIn) {
             return (
                 <Button
@@ -548,59 +535,82 @@ export default function EmployeeDashboard() {
             );
         }
 
-        // --- IN PROGRESS: waiting for break start ---
-        if (!isBreak && !hasBreakEnded) {
+        return (
+            <Button
+                onClick={handleClockOutClick}
+                disabled={isLoading || isBreak} // Cannot clock out while in break
+                className="w-full h-14 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold shadow-red-200 shadow-lg text-lg"
+            >
+                {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                    <>
+                        <LogOut className="mr-2 h-5 w-5" />
+                        Absen Pulang
+                    </>
+                )}
+            </Button>
+        );
+    };
+
+    const renderBreakSection = () => {
+        // Break section is only relevant when checked in and not checked out
+        if (!hasCheckedIn || hasCheckedOut) return null;
+
+        if (!today?.breakStart) {
             return (
-                <Button
-                    onClick={() => startAttendanceFlow(breakStart, "Selamat Istirahat")}
-                    disabled={isLoading}
-                    className="w-full h-14 rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-semibold shadow-orange-200 shadow-lg text-lg"
-                >
-                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
-                        <>
-                            <Coffee className="mr-2 h-5 w-5" />
-                            Mulai Istirahat
-                        </>
-                    )}
-                </Button>
+                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 flex flex-col gap-2">
+                    <p className="text-[10px] text-orange-600 font-bold uppercase text-center">Menu Istirahat</p>
+                    <Button
+                        onClick={() => startAttendanceFlow(breakStart, "Selamat Istirahat")}
+                        disabled={isLoading}
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white font-semibold shadow-orange-200 shadow-lg"
+                    >
+                        {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                            <>
+                                <Coffee className="mr-2 h-5 w-5" />
+                                Mulai Istirahat
+                            </>
+                        )}
+                    </Button>
+                </div>
             );
         }
 
-        // --- IN BREAK: waiting for break end ---
-        if (isBreak && !hasBreakEnded) {
+        if (isBreak) {
             return (
-                <Button
-                    onClick={() => startAttendanceFlow(breakEnd, "Selamat Bekerja Kembali")}
-                    disabled={isLoading}
-                    className="w-full h-14 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold shadow-orange-200 shadow-lg text-lg"
-                >
-                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
-                        <>
-                            <Camera className="mr-2 h-5 w-5" />
-                            Selesai Istirahat
-                        </>
-                    )}
-                </Button>
+                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 flex flex-col gap-2">
+                    <p className="text-[10px] text-orange-600 font-bold uppercase text-center">Menu Istirahat</p>
+                    <Button
+                        onClick={() => startAttendanceFlow(breakEnd, "Selamat Bekerja Kembali")}
+                        disabled={isLoading}
+                        className="w-full h-12 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold shadow-orange-200 shadow-lg"
+                    >
+                        {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                            <>
+                                <Camera className="mr-2 h-5 w-5" />
+                                Selesai Istirahat
+                            </>
+                        )}
+                    </Button>
+                </div>
             );
         }
 
-        // --- READY TO CLOCK OUT ---
-        if (hasCheckedIn && hasBreakEnded && !hasCheckedOut) {
+        if (hasBreakEnded) {
             return (
-                <Button
-                    onClick={handleClockOutClick}
-                    disabled={isLoading}
-                    className="w-full h-14 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold shadow-red-200 shadow-lg text-lg"
-                >
-                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
-                        <>
-                            <LogOut className="mr-2 h-5 w-5" />
-                            Absen Pulang
-                        </>
-                    )}
-                </Button>
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-2 opacity-60">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase text-center">Menu Istirahat</p>
+                    <Button
+                        disabled
+                        className="w-full h-12 rounded-xl bg-gray-200 text-gray-500 font-semibold"
+                    >
+                        <Check className="mr-2 h-4 w-4" />
+                        Sudah Istirahat (1x Selesai)
+                    </Button>
+                </div>
             );
         }
+
+        return null;
     };
 
     // Fetch location when camera opens or on mount per user request
@@ -726,8 +736,9 @@ export default function EmployeeDashboard() {
                     transition={{ delay: 0.2 }}
                     className="space-y-4"
                 >
-                    <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
-                        {renderMainButton()}
+                    <div className="flex flex-col gap-5 w-full max-w-sm mx-auto">
+                        {renderAttendanceSection()}
+                        {renderBreakSection()}
 
                         <div className="grid grid-cols-2 gap-3 mt-2">
                             <Button
