@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CameraModal } from "@/components/CameraModal";
 import { LateReasonModal } from "@/components/LateReasonModal";
 import { WorkTimer } from "@/components/WorkTimer";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 // Helper: resolve photo URL — handles both local uploads and Google Drive File IDs
 function getPhotoUrl(value: string): string {
@@ -103,6 +104,9 @@ export default function EmployeeDashboard() {
     const [permitNote, setPermitNote] = useState("");
     const [permitType, setPermitType] = useState<"sick" | "permission">("permission");
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+    // PWA Install Hook
+    const { isInstallable, installApp } = usePWAInstall();
 
     // Shift Selection State
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -620,7 +624,20 @@ export default function EmployeeDashboard() {
 
             {/* No Shift Selection Modal - Defaulting to Management */}
 
-            <CompanyHeader />
+            <div className="relative">
+                <CompanyHeader />
+                {isInstallable && (
+                    <div className="absolute top-4 right-4 z-20">
+                        <Button
+                            onClick={installApp}
+                            size="sm"
+                            className="bg-white/20 hover:bg-white/30 text-white border border-white/40 shadow-sm backdrop-blur-md rounded-full text-xs h-8 px-3"
+                        >
+                            <Zap className="w-3 h-3 mr-1" /> Install App
+                        </Button>
+                    </div>
+                )}
+            </div>
 
             <main className="px-4 -mt-8 max-w-lg mx-auto space-y-6">
                 {/* User Card */}
