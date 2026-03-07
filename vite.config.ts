@@ -10,7 +10,7 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.png", "logo_elok_buah.jpg"],
+      includeAssets: ["favicon.png", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
         name: "Absensi PT EJA",
         short_name: "Absensi EJA",
@@ -18,21 +18,23 @@ export default defineConfig({
         theme_color: "#1a1a1a",
         background_color: "#ffffff",
         display: "standalone",
+        start_url: "/",
+        id: "/",
         icons: [
           {
-            src: "/logo_elok_buah.jpg",
+            src: "/pwa-192x192.png",
             sizes: "192x192",
-            type: "image/jpeg",
+            type: "image/png",
           },
           {
-            src: "/logo_elok_buah.jpg",
+            src: "/pwa-512x512.png",
             sizes: "512x512",
-            type: "image/jpeg",
+            type: "image/png",
           },
           {
-            src: "/logo_elok_buah.jpg",
+            src: "/pwa-512x512.png",
             sizes: "512x512",
-            type: "image/jpeg",
+            type: "image/png",
             purpose: "any maskable",
           }
         ],
