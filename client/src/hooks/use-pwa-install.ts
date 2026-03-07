@@ -13,12 +13,8 @@ interface BeforeInstallPromptEvent extends Event {
 export function usePWAInstall() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isInstallable, setIsInstallable] = useState(false);
-    const [isDismissed, setIsDismissed] = useState(false);
 
     useEffect(() => {
-        const dismissed = localStorage.getItem("pwa-install-dismissed");
-        if (dismissed) setIsDismissed(true);
-
         const handler = (e: Event) => {
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
@@ -73,11 +69,6 @@ export function usePWAInstall() {
         setIsInstallable(false);
     };
 
-    const dismissInstall = () => {
-        localStorage.setItem("pwa-install-dismissed", "true");
-        setIsDismissed(true);
-    };
-
     // Detect if running in standalone mode (installed as PWA)
     const isStandalone = typeof window !== 'undefined' &&
         (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
@@ -86,10 +77,9 @@ export function usePWAInstall() {
     const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream && !isStandalone;
 
     return {
-        isInstallable: (isInstallable || isIOS) && !isStandalone && !isDismissed,
+        isInstallable: (isInstallable || isIOS) && !isStandalone,
         installApp,
         isIOS,
-        isStandalone,
-        dismissInstall
+        isStandalone
     };
 }

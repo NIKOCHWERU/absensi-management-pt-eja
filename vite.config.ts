@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
-        name: "Absensi PT EJA",
-        short_name: "Absensi EJA",
+        name: "ABSENSI MANAJEMEN PT EJA",
+        short_name: "MANAJEMEN EJA",
         description: "Aplikasi Manajemen Absensi PT Elok Jaya Abadhi",
         theme_color: "#1a1a1a",
         background_color: "#ffffff",

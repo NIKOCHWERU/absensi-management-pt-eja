@@ -4,7 +4,7 @@ import { X, Download, Smartphone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function InstallAlert() {
-    const { isInstallable, installApp, dismissInstall, isIOS } = usePWAInstall();
+    const { isInstallable, installApp, isIOS } = usePWAInstall();
 
     if (!isInstallable) return null;
 
@@ -30,27 +30,12 @@ export function InstallAlert() {
                             <Button
                                 size="sm"
                                 onClick={installApp}
-                                className="bg-white text-green-700 hover:bg-white/90 text-[11px] h-8 px-3 rounded-full font-bold shadow-sm"
+                                className="w-full bg-white text-green-700 hover:bg-white/90 text-sm h-10 rounded-xl font-bold shadow-sm"
                             >
                                 Instal Sekarang
                             </Button>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={dismissInstall}
-                                className="text-white hover:bg-white/10 text-[11px] h-8 px-3 rounded-full"
-                            >
-                                Nanti saja
-                            </Button>
                         </div>
                     </div>
-
-                    <button
-                        onClick={dismissInstall}
-                        className="text-white/60 hover:text-white transition-colors"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
                 </div>
             </motion.div>
         </AnimatePresence>
