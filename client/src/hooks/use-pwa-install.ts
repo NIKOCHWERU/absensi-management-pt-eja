@@ -13,8 +13,12 @@ interface BeforeInstallPromptEvent extends Event {
 export function usePWAInstall() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isInstallable, setIsInstallable] = useState(false);
+    const [isDismissed, setIsDismissed] = useState(false);
 
     useEffect(() => {
+        const dismissed = localStorage.getItem("pwa-install-dismissed");
+        if (dismissed) setIsDismissed(true);
+
         const handler = (e: Event) => {
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
@@ -69,8 +73,23 @@ export function usePWAInstall() {
         setIsInstallable(false);
     };
 
-    // On iOS, PWA requires manual installation. We might still want to show an install instruction button
-    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream && !window.matchMedia('(display-mode: standalone)').matches;
+    const dismissInstall = () => {
+        localStorage.setItem("pwa-install-dismissed", "true");
+        setIsDismissed(true);
+    };
 
-    return { isInstallable: isInstallable || isIOS, installApp, isIOS };
+    // Detect if running in standalone mode (installed as PWA)
+    const isStandalone = typeof window !== 'undefined' &&
+        (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+
+    // On iOS, PWA requires manual installation.
+    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream && !isStandalone;
+
+    return {
+        isInstallable: (isInstallable || isIOS) && !isStandalone && !isDismissed,
+        installApp,
+        isIOS,
+        isStandalone,
+        dismissInstall
+    };
 }

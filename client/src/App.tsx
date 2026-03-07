@@ -116,6 +116,7 @@ function Router() {
 }
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { InstallAlert } from "@/components/InstallAlert";
 
 function App() {
   return (
@@ -123,6 +124,7 @@ function App() {
       <ErrorBoundary>
         <TooltipProvider>
           <Toaster />
+          <InstallAlert />
           <Router />
         </TooltipProvider>
       </ErrorBoundary>
