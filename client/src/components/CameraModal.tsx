@@ -12,9 +12,10 @@ interface CameraModalProps {
   onClose: () => void;
   onCapture: (photoData: string) => Promise<void>;
   locationAddress?: string;
+  errorMsg?: string | null;
 }
 
-export function CameraModal({ open, onClose, onCapture, locationAddress }: CameraModalProps) {
+export function CameraModal({ open, onClose, onCapture, locationAddress, errorMsg }: CameraModalProps) {
   const { user } = useAuth();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
   };
 
   const handleConfirm = async () => {
-    if (capturedPhoto && !isSubmitting) {
+    if (capturedPhoto && !isSubmitting && !errorMsg) {
       setIsSubmitting(true);
       try {
         await onCapture(capturedPhoto);
@@ -163,7 +164,7 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full bg-black/20 text-white hover:bg-black/40 backdrop-blur-md"
+                className="rounded-full bg-black/40 text-white hover:bg-black/60 backdrop-blur-md transition-colors"
                 onClick={onClose}
               >
                 <X className="w-6 h-6" />
@@ -183,42 +184,55 @@ export function CameraModal({ open, onClose, onCapture, locationAddress }: Camer
         </div>
 
         {/* Bottom Controls */}
-        <div className="bg-black/80 backdrop-blur-xl p-8 flex justify-center items-center gap-8 z-10">
-          {!capturedPhoto ? (
-            <button
-              onClick={capturePhoto}
-              disabled={isInitializing || isSubmitting}
-              className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50"
-            >
-              <div className="w-16 h-16 rounded-full bg-white shadow-lg" />
-            </button>
-          ) : (
-            <div className="flex items-center gap-12 w-full justify-center">
-              <Button
-                variant="ghost"
-                disabled={isSubmitting}
-                className="flex flex-col gap-2 text-white hover:bg-white/10 h-auto py-2"
-                onClick={handleRetake}
-              >
-                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
-                  <RefreshCw className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-medium">Ulangi</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                disabled={isSubmitting}
-                className="flex flex-col gap-2 text-white hover:bg-white/10 h-auto py-2"
-                onClick={handleConfirm}
-              >
-                <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                  {isSubmitting ? <RefreshCw className="w-10 h-10 animate-spin" /> : <Check className="w-10 h-10" />}
-                </div>
-                <span className="text-xs font-medium">{isSubmitting ? "Mengirim..." : "Gunakan Foto"}</span>
-              </Button>
+        <div className="bg-black flex-shrink-0 z-10 flex flex-col justify-end">
+          {errorMsg && capturedPhoto && (
+            <div className="bg-red-500 text-white p-4 text-center text-sm font-medium animate-in slide-in-from-bottom-2">
+              <p className="font-bold flex justify-center items-center gap-2 mb-1">
+                <X className="w-4 h-4" /> Akses DITOLAK
+              </p>
+              {errorMsg}
             </div>
           )}
+
+          <div className="p-8 flex justify-center items-center gap-8 bg-black/80 backdrop-blur-xl shrink-0">
+            {!capturedPhoto ? (
+              <button
+                onClick={capturePhoto}
+                disabled={isInitializing || isSubmitting}
+                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50"
+              >
+                <div className="w-16 h-16 rounded-full bg-white shadow-lg" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-12 w-full justify-center">
+                <Button
+                  variant="ghost"
+                  disabled={isSubmitting}
+                  className="flex flex-col gap-2 text-white hover:bg-white/10 h-auto py-2"
+                  onClick={handleRetake}
+                >
+                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
+                    <RefreshCw className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-medium">Ulangi</span>
+                </Button>
+
+                {!errorMsg && (
+                  <Button
+                    variant="ghost"
+                    disabled={isSubmitting}
+                    className="flex flex-col gap-2 text-white hover:bg-white/10 h-auto py-2"
+                    onClick={handleConfirm}
+                  >
+                    <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      {isSubmitting ? <RefreshCw className="w-10 h-10 animate-spin" /> : <Check className="w-10 h-10" />}
+                    </div>
+                    <span className="text-xs font-medium">{isSubmitting ? "Mengirim..." : "Gunakan Foto"}</span>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

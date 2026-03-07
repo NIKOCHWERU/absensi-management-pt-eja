@@ -127,6 +127,7 @@ export default function EmployeeDashboard() {
 
     const [isFakeGPSModalOpen, setIsFakeGPSModalOpen] = useState(false);
     const [fakeGPSReasons, setFakeGPSReasons] = useState<string[]>([]);
+    const [cameraErrorMsg, setCameraErrorMsg] = useState<string | null>(null);
 
     // ... (Keep existing getCoordinates logic)
     const lastLocationFetch = useRef<number>(0);
@@ -314,10 +315,8 @@ export default function EmployeeDashboard() {
             const { address, locationMetadata, isSuspicious, reasons } = await getCoordinates(false);
 
             if (isSuspicious) {
-                setFakeGPSReasons(reasons || []);
-                setIsFakeGPSModalOpen(true);
-                setIsCameraOpen(false); // Close camera
-                setActiveAction(null);  // Abort action
+                // Show error inside camera modal
+                setCameraErrorMsg(`Lokasi palsu terdeteksi: ${reasons[0]}. Harap gunakan lokasi asli dan ulangi foto.`);
                 return;
             }
 
@@ -628,8 +627,12 @@ export default function EmployeeDashboard() {
             <CameraModal
                 open={isCameraOpen}
                 onCapture={handlePhotoCaptured}
-                onClose={() => setIsCameraOpen(false)}
+                onClose={() => {
+                    setIsCameraOpen(false);
+                    setCameraErrorMsg(null);
+                }}
                 locationAddress={locationAddress}
+                errorMsg={cameraErrorMsg}
             />
 
             {/* No Shift Selection Modal - Defaulting to Management */}
