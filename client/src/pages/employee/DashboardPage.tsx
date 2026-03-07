@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, User, Camera, MapPin, Coffee, LogOut, X, Check, RefreshCw, SwitchCamera, Zap } from "lucide-react";
+import { Loader2, User, Camera, MapPin, Coffee, LogOut, X, Check, RefreshCw, SwitchCamera, Zap, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -125,9 +125,12 @@ export default function EmployeeDashboard() {
     const [processingLocation, setProcessingLocation] = useState(false);
     const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
+    const [isFakeGPSModalOpen, setIsFakeGPSModalOpen] = useState(false);
+    const [fakeGPSReasons, setFakeGPSReasons] = useState<string[]>([]);
+
     // ... (Keep existing getCoordinates logic)
     const lastLocationFetch = useRef<number>(0);
-    const lastLocationResult = useRef<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean } | null>(null);
+    const lastLocationResult = useRef<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean, reasons: string[] } | null>(null);
 
     // Heuristic fake GPS detection
     function checkIsSuspicious(coords: GeolocationCoordinates): { suspicious: boolean; reasons: string[] } {
@@ -157,7 +160,7 @@ export default function EmployeeDashboard() {
         return { suspicious: reasons.length > 0, reasons };
     }
 
-    const getCoordinates = async (force = false): Promise<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean }> => {
+    const getCoordinates = async (force = false): Promise<{ lat: number, lng: number, address: string, locationMetadata: string, isSuspicious: boolean, reasons: string[] }> => {
         const now = Date.now();
         // If we have a location fetched in the last 5 mins, reuse it unless forced
         if (!force && lastLocationResult.current && (now - lastLocationFetch.current < 300000)) {
@@ -208,7 +211,7 @@ export default function EmployeeDashboard() {
 
             setLocationAddress(address);
             lastLocationFetch.current = Date.now();
-            const result = { lat: latitude, lng: longitude, address, locationMetadata, isSuspicious: suspicious };
+            const result = { lat: latitude, lng: longitude, address, locationMetadata, isSuspicious: suspicious, reasons };
             lastLocationResult.current = result;
 
             if (suspicious) {
@@ -308,7 +311,16 @@ export default function EmployeeDashboard() {
         if (!activeAction) return;
 
         try {
-            const { address, locationMetadata, isSuspicious } = await getCoordinates(false);
+            const { address, locationMetadata, isSuspicious, reasons } = await getCoordinates(false);
+
+            if (isSuspicious) {
+                setFakeGPSReasons(reasons || []);
+                setIsFakeGPSModalOpen(true);
+                setIsCameraOpen(false); // Close camera
+                setActiveAction(null);  // Abort action
+                return;
+            }
+
             const payload: any = {
                 location: address,
                 checkInPhoto: photoData,
@@ -322,12 +334,10 @@ export default function EmployeeDashboard() {
 
             await activeAction.fn(payload);
 
-            const suspiciousWarning = isSuspicious ? ' ⚠️ Lokasi terdeteksi mencurigakan (kemungkinan GPS palsu).' : '';
-
             toast({
                 title: activeAction.successTitle,
-                description: `Lokasi: ${address.substring(0, 80)}${suspiciousWarning}`,
-                className: isSuspicious ? "bg-orange-500 text-white" : "bg-green-500 text-white"
+                description: `Lokasi: ${address.substring(0, 80)}`,
+                className: "bg-green-500 text-white"
             });
 
             // Only close on success
@@ -915,7 +925,7 @@ export default function EmployeeDashboard() {
                             placeholder={`Alasan ${permitType === 'sick' ? 'sakit' : 'izin'}...`}
                             value={permitNote}
                             onChange={(e) => setPermitNote(e.target.value)}
-                            className="resize-none rounded-2xl border-gray-200 focus:border-primary min-h-[100px]"
+                            className="resize-none h-24 rounded-xl"
                         />
 
                         {/* Contextual state warning */}
