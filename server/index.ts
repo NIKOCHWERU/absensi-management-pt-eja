@@ -1,4 +1,5 @@
 import "dotenv/config";
+process.env.TZ = 'Asia/Jakarta';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";

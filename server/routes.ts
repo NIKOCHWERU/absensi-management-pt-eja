@@ -106,13 +106,12 @@ export async function registerRoutes(
   // Day boundary is 04:00 AM Jakarta — before 04:00 counts as previous day
   function getJakartaDate(): string {
     const now = new Date();
-    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    if (jakartaTime.getHours() < 4) {
-      jakartaTime.setDate(jakartaTime.getDate() - 1);
+    if (now.getHours() < 4) {
+      now.setDate(now.getDate() - 1);
     }
-    const y = jakartaTime.getFullYear();
-    const m = String(jakartaTime.getMonth() + 1).padStart(2, '0');
-    const d = String(jakartaTime.getDate()).padStart(2, '0');
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
 
@@ -160,17 +159,10 @@ export async function registerRoutes(
       }
 
       // Determine status based on Shift Rules
+      // Standard Date handles Jakarta time now
       const now = new Date();
-      // Reliable way to get Jakarta hours and minutes
-      const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Jakarta',
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: false
-      });
-      const timeParts = jakartaFormatter.formatToParts(now);
-      const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
-      const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0');
+      const hour = now.getHours();
+      const minute = now.getMinutes();
       const timeInMinutes = hour * 60 + minute;
 
       let status = "present";
@@ -388,16 +380,10 @@ export async function registerRoutes(
 
     // Create new session with incremented session number
     const nextSessionNumber = existingSessions.length + 1;
+    // Simplified time calculation
     const now = new Date();
-    const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Jakarta',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false
-    });
-    const timeParts = jakartaFormatter.formatToParts(now);
-    const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
-    const minute = parseInt(timeParts.find(p => p.type === 'minute')?.value || '0');
+    const hour = now.getHours();
+    const minute = now.getMinutes();
     const timeInMinutes = hour * 60 + minute;
 
     let status = "present";
@@ -446,15 +432,9 @@ export async function registerRoutes(
     const sessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, today);
 
     // Auto-close logic: if we are past 04:00 AM, check for open sessions from previous days
+    // Simplified auto-close logic
     const now = new Date();
-    const jakartaFormatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Jakarta',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false
-    });
-    const timeParts = jakartaFormatter.formatToParts(now);
-    const hour = parseInt(timeParts.find(p => p.type === 'hour')?.value || '0');
+    const hour = now.getHours();
 
     if (hour >= 4) {
       if (sessions.length === 0) {
