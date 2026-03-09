@@ -853,6 +853,23 @@ export default function RecapPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
+                                    {(() => {
+                                        const p = (selectedPhotoRecord as any).lateReasonPhoto;
+                                        if (p && !p.includes('/') && !p.includes('.') && p.length > 20) {
+                                            return (
+                                                <a
+                                                    href={`https://drive.google.com/file/d/${p}/view`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg mt-1 w-fit"
+                                                >
+                                                    <Camera className="w-3 h-3" />
+                                                    Buka di Google Drive (Foto Asli)
+                                                </a>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             )}
 
@@ -874,6 +891,23 @@ export default function RecapPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
+                                    {(() => {
+                                        const p = (selectedPhotoRecord as any).checkInPhoto;
+                                        if (p && !p.includes('/') && !p.includes('.') && p.length > 20) {
+                                            return (
+                                                <a
+                                                    href={`https://drive.google.com/file/d/${p}/view`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg mt-1 w-fit"
+                                                >
+                                                    <Camera className="w-3 h-3" />
+                                                    Buka di Google Drive (Foto Asli)
+                                                </a>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             )}
 
@@ -895,6 +929,23 @@ export default function RecapPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
+                                    {(() => {
+                                        const p = (selectedPhotoRecord as any).checkOutPhoto;
+                                        if (p && !p.includes('/') && !p.includes('.') && p.length > 20) {
+                                            return (
+                                                <a
+                                                    href={`https://drive.google.com/file/d/${p}/view`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg mt-1 w-fit"
+                                                >
+                                                    <Camera className="w-3 h-3" />
+                                                    Buka di Google Drive (Foto Asli)
+                                                </a>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             )}
                         </div>

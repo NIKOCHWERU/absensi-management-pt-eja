@@ -99,7 +99,7 @@ export default function AttendanceHistoryPage() {
         if (!url) return null;
         if (url.includes('drive.google.com')) return url;
         if (!url.includes('/') && url.length > 15) {
-            return `/api/images/${url}`;
+            return `https://drive.google.com/file/d/${url}/view`;
         }
         return getPhotoUrl(url);
     };

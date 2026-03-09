@@ -917,6 +917,19 @@ export default function EmployeeDashboard() {
                         >
                             <X className="h-5 w-5" />
                         </Button>
+                        {selectedPhoto && selectedPhoto.includes('/api/images/') && (
+                            <div className="absolute bottom-6 left-0 right-0 flex justify-center px-6">
+                                <a
+                                    href={`https://drive.google.com/file/d/${selectedPhoto.split('/').pop()}/view`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xl text-white py-3 rounded-2xl border border-white/30 font-bold transition-all"
+                                >
+                                    <Camera className="w-5 h-5" />
+                                    Buka Foto di Google Drive
+                                </a>
+                            </div>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
