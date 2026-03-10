@@ -36,6 +36,7 @@ export default function AttendanceHistoryPage() {
     const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
     const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+    const [searchName, setSearchName] = useState("");
 
     const { data: attendanceHistory, isLoading: isLoadingAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
@@ -65,6 +66,12 @@ export default function AttendanceHistoryPage() {
     }
 
     const filteredRecords = attendanceHistory?.filter(att => {
+        const emp = getEmployee(att.userId);
+        if (!emp) return false;
+
+        // Name Filter
+        if (searchName && !emp.fullName.toLowerCase().includes(searchName.toLowerCase())) return false;
+
         const attDate = new Date(att.date);
         const d = new Date(attDate);
         d.setHours(0, 0, 0, 0);
@@ -73,7 +80,12 @@ export default function AttendanceHistoryPage() {
         const e = new Date(endDate);
         e.setHours(23, 59, 59, 999);
         return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+    }).sort((a, b) => {
+        const nameA = getEmployee(a.userId)?.fullName || '';
+        const nameB = getEmployee(b.userId)?.fullName || '';
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }) || [];
 
     const getEmployee = (userId: number) => {
         return users?.find(user => user.id === userId);
@@ -260,9 +272,13 @@ export default function AttendanceHistoryPage() {
             html += `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Tidak ada data absensi</td></tr>`;
         }
 
+        let lastShownName = "";
         for (let i = 0; i < filteredRecords.length; i++) {
             const r = filteredRecords[i];
             const emp = getEmployee(r.userId);
+            const currentName = emp?.fullName || '-';
+            const isSameAsPrev = currentName === lastShownName;
+            lastShownName = currentName;
 
             const sts = r.status || '-';
             const statusLabel = sts === 'present' ? 'Hadir' : sts === 'late' ? 'Telat' : sts === 'sick' ? 'Sakit' : sts === 'permission' ? 'Izin' : sts === 'cuti' ? 'Cuti' : sts === 'absent' ? 'Alpha' : sts;
@@ -298,12 +314,12 @@ export default function AttendanceHistoryPage() {
 
             let extraNotes = '';
             if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
-            if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Telat:\n</b> ${(r as any).lateReason}</div>`;
+            if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
 
             html += `<tr>
-                <td class="c">${i + 1}</td>
+                <td class="c">${isSameAsPrev ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
                 <td>${format(new Date(r.date), 'dd/MM/yyyy')}</td>
-                <td><b style="color:#1d4ed8;">${emp?.fullName || '-'}</b></td>
+                <td>${isSameAsPrev ? '' : `<b style="color:#1d4ed8;">${currentName}</b>`}</td>
                 <td style="font-family:monospace;font-size:11px;line-height:1.4;">
                   IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
                   BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
@@ -520,8 +536,17 @@ export default function AttendanceHistoryPage() {
 
                 <Card className="border-none shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg text-gray-800">
-                            Data Periode: {format(startDate, 'dd MMM yyyy', { locale: id })} - {format(endDate, 'dd MMM yyyy', { locale: id })}
+                        <CardTitle className="text-lg text-gray-800 flex flex-col md:flex-row gap-2 md:items-center">
+                            <span>Data Periode: {format(startDate, 'dd MMM yyyy', { locale: id })} - {format(endDate, 'dd MMM yyyy', { locale: id })}</span>
+                            <div className="relative md:ml-4">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                <Input
+                                    placeholder="Cari Nama Karyawan..."
+                                    value={searchName}
+                                    onChange={(e) => setSearchName(e.target.value)}
+                                    className="h-8 text-xs pl-9 w-full md:w-64"
+                                />
+                            </div>
                         </CardTitle>
                         <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
                             {filteredRecords.length} Data Absensi
