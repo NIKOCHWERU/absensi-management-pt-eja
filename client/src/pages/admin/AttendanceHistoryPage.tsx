@@ -65,28 +65,6 @@ export default function AttendanceHistoryPage() {
         endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 25);
     }
 
-    const filteredRecords = attendanceHistory?.filter(att => {
-        const emp = getEmployee(att.userId);
-        if (!emp) return false;
-
-        // Name Filter
-        if (searchName && !emp.fullName.toLowerCase().includes(searchName.toLowerCase())) return false;
-
-        const attDate = new Date(att.date);
-        const d = new Date(attDate);
-        d.setHours(0, 0, 0, 0);
-        const s = new Date(startDate);
-        s.setHours(0, 0, 0, 0);
-        const e = new Date(endDate);
-        e.setHours(23, 59, 59, 999);
-        return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
-    }).sort((a, b) => {
-        const nameA = getEmployee(a.userId)?.fullName || '';
-        const nameB = getEmployee(b.userId)?.fullName || '';
-        if (nameA !== nameB) return nameA.localeCompare(nameB);
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-    }) || [];
-
     const getEmployee = (userId: number) => {
         return users?.find(user => user.id === userId);
     };
@@ -111,6 +89,28 @@ export default function AttendanceHistoryPage() {
             return { isSuspicious: false, summary: '' };
         }
     };
+
+    const filteredRecords = attendanceHistory?.filter(att => {
+        const emp = getEmployee(att.userId);
+        if (!emp) return false;
+
+        // Name Filter
+        if (searchName && !emp.fullName.toLowerCase().includes(searchName.toLowerCase())) return false;
+
+        const attDate = new Date(att.date);
+        const d = new Date(attDate);
+        d.setHours(0, 0, 0, 0);
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        const e = new Date(endDate);
+        e.setHours(23, 59, 59, 999);
+        return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
+    }).sort((a, b) => {
+        const nameA = getEmployee(a.userId)?.fullName || '';
+        const nameB = getEmployee(b.userId)?.fullName || '';
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }) || [];
 
     const getDriveViewLink = (url: string | null) => {
         if (!url) return null;
