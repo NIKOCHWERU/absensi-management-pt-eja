@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin, ChevronLeft, ChevronRight, FileDown
+    Menu, Users, Clock, CalendarDays, LogOut, FileText, MessageSquare, History, Image as ImageIcon, MapPin, ChevronLeft, ChevronRight, FileDown, ArrowUpDown
 } from "lucide-react";
 
 // Helper: resolve photo URL — handles both local uploads and Google Drive File IDs
@@ -37,8 +37,17 @@ export default function AttendanceHistoryPage() {
     const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [searchName, setSearchName] = useState("");
-    const [sortField, setSortField] = useState<'date' | 'name'>('name');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [sortField, setSortField] = useState<'date' | 'name'>('date');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    const toggleSort = (field: 'date' | 'name') => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder(field === 'date' ? 'desc' : 'asc');
+        }
+    };
 
     const { data: attendanceHistory, isLoading: isLoadingAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
@@ -499,35 +508,7 @@ export default function AttendanceHistoryPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                        <div className="flex items-center gap-2 bg-white border rounded-md p-1">
-                            <Select value={sortField} onValueChange={(v: any) => setSortField(v)}>
-                                <SelectTrigger className="w-[110px] h-8 text-xs border-none bg-transparent">
-                                    <SelectValue placeholder="Urutkan" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="date">Tanggal</SelectItem>
-                                    <SelectItem value="name">Nama</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
-                                <SelectTrigger className="w-[110px] h-8 text-xs border-none bg-transparent">
-                                    <SelectValue placeholder="Order" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sortField === 'date' ? (
-                                        <>
-                                            <SelectItem value="desc">Terbaru</SelectItem>
-                                            <SelectItem value="asc">Terlama</SelectItem>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <SelectItem value="asc">A-Z</SelectItem>
-                                            <SelectItem value="desc">Z-A</SelectItem>
-                                        </>
-                                    )}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Sorting Dropdowns removed as per request to use header sorting */}
 
                         <div className="flex items-center gap-2 bg-white border rounded-md p-1">
                             <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
@@ -611,7 +592,16 @@ export default function AttendanceHistoryPage() {
                                 <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                                         <tr>
-                                            <th className="px-6 py-4 font-bold">Karyawan</th>
+                                            <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('date')}>
+                                                <div className="flex items-center gap-1">
+                                                    Tanggal <ArrowUpDown className={`h-3 w-3 ${sortField === 'date' ? 'text-green-600' : 'text-gray-400'}`} />
+                                                </div>
+                                            </th>
+                                            <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('name')}>
+                                                <div className="flex items-center gap-1">
+                                                    Nama Karyawan <ArrowUpDown className={`h-3 w-3 ${sortField === 'name' ? 'text-green-600' : 'text-gray-400'}`} />
+                                                </div>
+                                            </th>
                                             <th className="px-6 py-4 font-bold text-center">Waktu Absen</th>
                                             <th className="px-6 py-4 font-bold">Foto Bukti</th>
                                             <th className="px-6 py-4 font-bold">Status & Keterangan</th>
@@ -623,16 +613,16 @@ export default function AttendanceHistoryPage() {
                                             return (
                                                 <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-col gap-1 items-start">
-                                                            <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
-                                                                    {emp?.fullName?.charAt(0) || '?'}
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
-                                                                    <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
-                                                                </div>
+                                                        <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
+                                                                {emp?.fullName?.charAt(0) || '?'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
+                                                                <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
                                                             </div>
                                                         </div>
                                                     </td>
