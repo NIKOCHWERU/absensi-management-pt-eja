@@ -373,10 +373,9 @@ export default function AttendanceHistoryPage() {
                 if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
                 if (sts === 'late' && (r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
 
-                html += `<tr>
                 const checkInLoc = r.checkInLocation || '-';
 
-                html += `< tr >
+                html += `<tr>
                 <td class="c">${isContinuation ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
                 <td>${isContinuation ? '' : currentDateStr}</td>
                 <td>
@@ -399,7 +398,7 @@ export default function AttendanceHistoryPage() {
                   ${extraNotes}
                 </td>
                 <td>${photosHtml}</td>
-            </tr > `;
+            </tr>`;
             }
 
             html += `
@@ -593,7 +592,7 @@ export default function AttendanceHistoryPage() {
                                     </Button>
                                     <span className="text-sm font-medium min-w-[120px] text-center">
                                         {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                            reportType === 'weekly' ? `${ format(startDate, "d MMM") } - ${ format(endDate, "d MMM yyyy", { locale: id }) } ` :
+                                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
                                                 format(targetDate, "MMMM yyyy", { locale: id })}
                                     </span>
                                     <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
@@ -641,12 +640,12 @@ export default function AttendanceHistoryPage() {
                                         <tr>
                                             <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('date')}>
                                                 <div className="flex items-center gap-1">
-                                                    Tanggal <ArrowUpDown className={`h - 3 w - 3 ${ sortField === 'date' ? 'text-green-600' : 'text-gray-400' } `} />
+                                                    Tanggal <ArrowUpDown className={`h - 3 w - 3 ${sortField === 'date' ? 'text-green-600' : 'text-gray-400'} `} />
                                                 </div>
                                             </th>
                                             <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('name')}>
                                                 <div className="flex items-center gap-1">
-                                                    Nama Karyawan <ArrowUpDown className={`h - 3 w - 3 ${ sortField === 'name' ? 'text-green-600' : 'text-gray-400' } `} />
+                                                    Nama Karyawan <ArrowUpDown className={`h - 3 w - 3 ${sortField === 'name' ? 'text-green-600' : 'text-gray-400'} `} />
                                                 </div>
                                             </th>
                                             <th className="px-6 py-4 font-bold text-center">Waktu Absen</th>
@@ -718,7 +717,7 @@ export default function AttendanceHistoryPage() {
                                                                     <span className="font-bold text-red-600">{record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}</span>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             {record.checkInLocation && (
                                                                 <div className="flex items-start gap-1.5 p-2 bg-gray-50 rounded-lg border border-gray-100 max-w-[160px]">
                                                                     <MapPin className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
@@ -747,14 +746,13 @@ export default function AttendanceHistoryPage() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-2 items-start max-w-[200px]">
                                                             <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
-                                                                ${
-        effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
-        effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
-            effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
-                effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
-                    effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                        'bg-gray-100 text-gray-700'
-    } `}>
+                                                                ${effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
+                                                                    effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                        effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                            effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                                effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                                    'bg-gray-100 text-gray-700'
+                                                                } `}>
                                                                 {effectiveStatus === 'present' ? 'Hadir' :
                                                                     effectiveStatus === 'late' ? 'Telat' :
                                                                         effectiveStatus === 'sick' ? 'Sakit' :
