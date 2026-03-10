@@ -428,7 +428,8 @@ export default function RecapPage() {
             // Validation for incomplete sequences (e.g. checkIn and checkOut exist but no breakStart/End)
             // Also if not checked out at all
             const isSequenceIncomplete = (row.checkIn && !row.checkOut) ||
-                (inTime !== '-' && outTime !== '-' && ((brkTime !== '-' && brkEnd === '-') || (brkTime === '-' && brkEnd !== '-') || (brkTime === '-' && brkEnd === '-')));
+                (inTime !== '-' && outTime !== '-' && ((brkTime !== '-' && brkEnd === '-') || (brkTime === '-' && brkEnd !== '-')));
+            const isNoBreak = (inTime !== '-' && outTime !== '-' && brkTime === '-' && brkEnd === '-');
 
             const jamKerja = !isSameDayAndUser
                 ? (dailyTotalMins > 0 ? formatDuration(dailyTotalMins) : '-')
@@ -439,6 +440,8 @@ export default function RecapPage() {
                 keterangan = row.notes ? row.notes + ' <br><span class="note-warn">(Belum Pulang)</span>' : '<span class="note-warn">Belum Pulang</span>';
             } else if (isSequenceIncomplete) {
                 keterangan = row.notes ? row.notes + ' <br><span class="note-warn">(Data Absensi Tidak Lengkap)</span>' : '<span class="note-warn">Data Absensi Tidak Lengkap</span>';
+            } else if (isNoBreak) {
+                keterangan = row.notes ? row.notes + ' <br><span class="note-warn">(Tanpa Istirahat)</span>' : '<span class="note-warn">Tanpa Istirahat</span>';
             }
             const lateNote = row.status === 'late' && (row as any).lateReason
                 ? `<br><span class="note-late">[Telat: ${(row as any).lateReason}]</span>`
@@ -488,9 +491,10 @@ export default function RecapPage() {
                         const hasBrkE = dayRecords.some(r => r.breakEnd);
                         const hasOut = dayRecords.some(r => r.checkOut);
                         const isComplete = hasIn && hasBrkS && hasBrkE && hasOut;
+                        const isNoBreakComplete = hasIn && !hasBrkS && !hasBrkE && hasOut;
                         const dateStr = format(new Date(day), "dd/MM/yyyy");
 
-                        if (isComplete) {
+                        if (isComplete || isNoBreakComplete) {
                             const { netWorkMins } = calculateDailyTotal(dayRecords);
                             userSummary.totalMins += netWorkMins;
 
@@ -500,7 +504,7 @@ export default function RecapPage() {
                             const outTimeStr = lastOut ? format(new Date(lastOut), "HH.mm") : "";
 
                             const totalBreakMins = dayRecords.reduce((sum, r) => sum + (r.breakStart && r.breakEnd ? calculateDuration(r.breakStart, r.breakEnd) : 0), 0);
-                            const brkStr = totalBreakMins > 0 ? (totalBreakMins >= 60 ? `${Math.floor(totalBreakMins / 60)} jam ${totalBreakMins % 60} menit` : `${totalBreakMins} menit`) : `0 jam`;
+                            const brkStr = totalBreakMins > 0 ? (totalBreakMins >= 60 ? `${Math.floor(totalBreakMins / 60)} jam ${totalBreakMins % 60} menit` : `${totalBreakMins} menit`) : `0 jam (Tanpa Istirahat)`;
 
                             userSummary.breakdown.push(`<span style="color:#1e293b;font-weight:600;">${dateStr}</span> : Kerja jam ${inTimeStr} - jam ${outTimeStr} istirahat ${brkStr} (Total: ${formatDuration(netWorkMins)})`);
                         } else {
@@ -516,7 +520,7 @@ export default function RecapPage() {
                 <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
                 <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
                 <p class="sub" style="font-size:9.5px;color:#ef4444;margin-top:6px;max-width:400px;margin-left:auto;margin-right:auto;">
-                  *Hanya menghitung jam kerja jika karyawan melakukan minimal: absen masuk, mulai istirahat, selesai istirahat, & absen pulang dalam 1 hari.
+                  *Hanya menghitung jam kerja jika karyawan melakukan minimal: absen masuk & absen pulang (termasuk tanpa istirahat) dalam 1 hari.
                 </p>
               </div>
               <table>
@@ -726,9 +730,11 @@ export default function RecapPage() {
                                                         {(() => {
                                                             const brkS = row.breakStart ? 'yes' : '-';
                                                             const brkE = row.breakEnd ? 'yes' : '-';
-                                                            const isSeqIncomplete = (!row.checkOut) || (row.checkIn && row.checkOut && ((brkS !== '-' && brkE === '-') || (brkS === '-' && brkE !== '-') || (brkS === '-' && brkE === '-')));
+                                                            const isSeqIncomplete = (!row.checkOut) || (row.checkIn && row.checkOut && ((brkS !== '-' && brkE === '-') || (brkS === '-' && brkE !== '-')));
+                                                            const isNoBreak = (row.checkIn && row.checkOut && brkS === '-' && brkE === '-');
                                                             if (!row.checkOut) return <span className="text-yellow-600 font-semibold">Belum Absen Pulang</span>;
                                                             if (isSeqIncomplete) return <span className="text-orange-600 font-semibold text-[10px]">Urutan Absen Terputus</span>;
+                                                            if (isNoBreak) return <>Sesi: {formatDuration(sessionNetMins)} <div className="text-[10px] text-gray-400">Tanpa Istirahat</div></>;
                                                             return <>Sesi: {formatDuration(sessionNetMins)}</>;
                                                         })()}
                                                     </div>
