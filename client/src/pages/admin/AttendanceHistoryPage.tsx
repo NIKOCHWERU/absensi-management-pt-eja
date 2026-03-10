@@ -374,28 +374,37 @@ export default function AttendanceHistoryPage() {
                 if (sts === 'late' && (r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
 
                 html += `<tr>
+                const checkInLoc = r.checkInLocation || '-';
+
+                html += `< tr >
                 <td class="c">${isContinuation ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
                 <td>${isContinuation ? '' : currentDateStr}</td>
                 <td>
                     ${isContinuation ? '' : `<b style="color:#1d4ed8;">${currentName}</b><br/>`}
                     <span style="color:#94a3b8; font-size: 9px; font-style: italic;">Sesi ${r.sessionNumber || 1}</span>
                 </td>
-                <td style="font-family:monospace;font-size:11px;line-height:1.4;">
-                  IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
-                  BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
-                  OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span>
+                <td>
+                  <div style="font-family:monospace;font-size:10.5px;line-height:1.4;">
+                    IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
+                    BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
+                    OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span>
+                  </div>
+                  <div style="margin-top:6px; font-size:8.5px; color:#64748b; line-height:1.2; max-width:140px; word-break:break-word;">
+                    <span style="font-weight:bold; color:#475569; display:block; margin-bottom:1px;">LOKASI MASUK:</span>
+                    ${checkInLoc}
+                  </div>
                 </td>
                 <td>
                   <span class="status-badge ${statusClass}">${statusLabel}</span>
                   ${extraNotes}
                 </td>
                 <td>${photosHtml}</td>
-            </tr>`;
+            </tr > `;
             }
 
             html += `
-    </tbody>
-  </table>
+    </tbody >
+  </table >
 
   <div class="btn-wrap">
     <a id="dl-btn" class="download-btn" href="#">&#11015;&nbsp; Download File</a>
@@ -413,8 +422,8 @@ export default function AttendanceHistoryPage() {
       setTimeout(function() { window.print(); }, 600);
     };
   </script>
-</body>
-</html>`;
+</body >
+</html > `;
 
             const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
             const blobUrl = URL.createObjectURL(blob);
@@ -584,7 +593,7 @@ export default function AttendanceHistoryPage() {
                                     </Button>
                                     <span className="text-sm font-medium min-w-[120px] text-center">
                                         {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
+                                            reportType === 'weekly' ? `${ format(startDate, "d MMM") } - ${ format(endDate, "d MMM yyyy", { locale: id }) } ` :
                                                 format(targetDate, "MMMM yyyy", { locale: id })}
                                     </span>
                                     <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
@@ -632,12 +641,12 @@ export default function AttendanceHistoryPage() {
                                         <tr>
                                             <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('date')}>
                                                 <div className="flex items-center gap-1">
-                                                    Tanggal <ArrowUpDown className={`h-3 w-3 ${sortField === 'date' ? 'text-green-600' : 'text-gray-400'}`} />
+                                                    Tanggal <ArrowUpDown className={`h - 3 w - 3 ${ sortField === 'date' ? 'text-green-600' : 'text-gray-400' } `} />
                                                 </div>
                                             </th>
                                             <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleSort('name')}>
                                                 <div className="flex items-center gap-1">
-                                                    Nama Karyawan <ArrowUpDown className={`h-3 w-3 ${sortField === 'name' ? 'text-green-600' : 'text-gray-400'}`} />
+                                                    Nama Karyawan <ArrowUpDown className={`h - 3 w - 3 ${ sortField === 'name' ? 'text-green-600' : 'text-gray-400' } `} />
                                                 </div>
                                             </th>
                                             <th className="px-6 py-4 font-bold text-center">Waktu Absen</th>
@@ -690,23 +699,34 @@ export default function AttendanceHistoryPage() {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-col gap-1 text-[11px] font-mono">
-                                                            <div className="flex justify-between w-32">
-                                                                <span className="text-gray-500">Masuk:</span>
-                                                                <span className="font-bold text-green-600">{record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}</span>
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex flex-col gap-1 text-[11px] font-mono">
+                                                                <div className="flex justify-between w-32">
+                                                                    <span className="text-gray-500">Masuk:</span>
+                                                                    <span className="font-bold text-green-600">{record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}</span>
+                                                                </div>
+                                                                <div className="flex justify-between w-32">
+                                                                    <span className="text-gray-500">Istirahat:</span>
+                                                                    <span className="font-bold text-orange-600">{record.breakStart ? format(new Date(record.breakStart), 'HH:mm') : '-'}</span>
+                                                                </div>
+                                                                <div className="flex justify-between w-32">
+                                                                    <span className="text-gray-500">Selesai:</span>
+                                                                    <span className="font-bold text-blue-600">{record.breakEnd ? format(new Date(record.breakEnd), 'HH:mm') : '-'}</span>
+                                                                </div>
+                                                                <div className="flex justify-between w-32">
+                                                                    <span className="text-gray-500">Pulang:</span>
+                                                                    <span className="font-bold text-red-600">{record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}</span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex justify-between w-32">
-                                                                <span className="text-gray-500">Istirahat:</span>
-                                                                <span className="font-bold text-orange-600">{record.breakStart ? format(new Date(record.breakStart), 'HH:mm') : '-'}</span>
-                                                            </div>
-                                                            <div className="flex justify-between w-32">
-                                                                <span className="text-gray-500">Selesai:</span>
-                                                                <span className="font-bold text-blue-600">{record.breakEnd ? format(new Date(record.breakEnd), 'HH:mm') : '-'}</span>
-                                                            </div>
-                                                            <div className="flex justify-between w-32">
-                                                                <span className="text-gray-500">Pulang:</span>
-                                                                <span className="font-bold text-red-600">{record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}</span>
-                                                            </div>
+                                                            
+                                                            {record.checkInLocation && (
+                                                                <div className="flex items-start gap-1.5 p-2 bg-gray-50 rounded-lg border border-gray-100 max-w-[160px]">
+                                                                    <MapPin className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
+                                                                    <p className="text-[10px] text-gray-500 leading-relaxed break-words line-clamp-3" title={record.checkInLocation}>
+                                                                        {record.checkInLocation}
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
@@ -726,14 +746,15 @@ export default function AttendanceHistoryPage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-2 items-start max-w-[200px]">
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase
-                                                                ${effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
-                                                                    effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                        effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                            effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                                effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                                                                    'bg-gray-100 text-gray-700'
-                                                                }`}>
+                                                            <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
+                                                                ${
+        effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
+        effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
+            effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
+                effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
+                    effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                        'bg-gray-100 text-gray-700'
+    } `}>
                                                                 {effectiveStatus === 'present' ? 'Hadir' :
                                                                     effectiveStatus === 'late' ? 'Telat' :
                                                                         effectiveStatus === 'sick' ? 'Sakit' :
