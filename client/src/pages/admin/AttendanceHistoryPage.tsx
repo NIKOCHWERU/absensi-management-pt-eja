@@ -376,7 +376,10 @@ export default function AttendanceHistoryPage() {
                 html += `<tr>
                 <td class="c">${isContinuation ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
                 <td>${isContinuation ? '' : currentDateStr}</td>
-                <td>${isContinuation ? `<span style="color:#94a3b8; font-style: italic;">Sesi ${r.sessionNumber}</span>` : `<b style="color:#1d4ed8;">${currentName}</b>`}</td>
+                <td>
+                    ${isContinuation ? '' : `<b style="color:#1d4ed8;">${currentName}</b><br/>`}
+                    <span style="color:#94a3b8; font-size: 9px; font-style: italic;">Sesi ${r.sessionNumber || 1}</span>
+                </td>
                 <td style="font-family:monospace;font-size:11px;line-height:1.4;">
                   IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
                   BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
@@ -669,7 +672,7 @@ export default function AttendanceHistoryPage() {
                                                         {isContinuation ? (
                                                             <div className="flex items-center gap-3 ml-6 opacity-40">
                                                                 <span className="text-gray-400">↳</span>
-                                                                <span className="text-xs italic text-gray-400">Sesi {record.sessionNumber}</span>
+                                                                <span className="text-xs italic text-gray-400">Sesi {record.sessionNumber || 1}</span>
                                                             </div>
                                                         ) : (
                                                             <div className="flex items-center gap-3">
@@ -677,7 +680,10 @@ export default function AttendanceHistoryPage() {
                                                                     {emp?.fullName?.charAt(0) || '?'}
                                                                 </div>
                                                                 <div>
-                                                                    <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
+                                                                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">Sesi {record.sessionNumber || 1}</span>
+                                                                    </div>
                                                                     <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
                                                                 </div>
                                                             </div>
