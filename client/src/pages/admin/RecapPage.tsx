@@ -501,19 +501,39 @@ export default function RecapPage() {
                         const isNoBreakComplete = hasIn && !hasBrkS && !hasBrkE && hasOut;
                         const dateStr = format(new Date(day), "dd/MM/yyyy");
 
-                        if (isComplete || isNoBreakComplete) {
+                        const statuses = dayRecords.map(r => r.status).filter(Boolean);
+                        let specialStatus = "";
+                        if (statuses.includes('sick')) specialStatus = "Sakit";
+                        else if (statuses.includes('cuti')) specialStatus = "Cuti";
+                        else if (statuses.includes('permission')) specialStatus = "Izin";
+                        else if (statuses.includes('off') || dayRecords.some(r => r.notes?.toLowerCase()?.includes('libur'))) specialStatus = "Libur";
+
+                        if (isComplete || isNoBreakComplete || (specialStatus && hasIn)) {
                             const { netWorkMins } = calculateDailyTotal(dayRecords);
-                            userSummary.totalMins += netWorkMins;
+
+                            if (isComplete || isNoBreakComplete || (hasIn && hasOut)) {
+                                userSummary.totalMins += netWorkMins;
+                            }
 
                             const firstIn = dayRecords.map(r => r.checkIn).filter(Boolean).sort()[0];
                             const lastOut = dayRecords.map(r => r.checkOut).filter(Boolean).sort().reverse()[0];
                             const inTimeStr = firstIn ? format(new Date(firstIn), "HH.mm") : "";
-                            const outTimeStr = lastOut ? format(new Date(lastOut), "HH.mm") : "";
+                            const outTimeStr = lastOut ? format(new Date(lastOut), "HH.mm") : "-";
 
                             const totalBreakMins = dayRecords.reduce((sum, r) => sum + (r.breakStart && r.breakEnd ? calculateDuration(r.breakStart, r.breakEnd) : 0), 0);
                             const brkStr = totalBreakMins > 0 ? (totalBreakMins >= 60 ? `${Math.floor(totalBreakMins / 60)} jam ${totalBreakMins % 60} menit` : `${totalBreakMins} menit`) : `0 jam (Tanpa Istirahat)`;
 
-                            userSummary.breakdown.push(`<span style="color:#1e293b;font-weight:600;">${dateStr}</span> : Kerja jam ${inTimeStr} - jam ${outTimeStr} istirahat ${brkStr} (Total: ${formatDuration(netWorkMins)})`);
+                            let workDetail = `Kerja jam ${inTimeStr || '-'} - jam ${outTimeStr} istirahat ${brkStr} (Total: ${netWorkMins > 0 ? formatDuration(netWorkMins) : '-'})`;
+
+                            if (specialStatus) {
+                                workDetail = `<span style="color:#ea580c;font-weight:600;">[${specialStatus}]</span> ${workDetail}`;
+                            } else if (!isComplete && !isNoBreakComplete) {
+                                workDetail = `<span style="color:#dc2626;font-weight:600;">(Absensi tidak lengkap)</span> Kerja jam ${inTimeStr || '-'} - jam ${outTimeStr}`;
+                            }
+
+                            userSummary.breakdown.push(`<span style="color:#1e293b;font-weight:600;">${dateStr}</span> : ${workDetail}`);
+                        } else if (specialStatus) {
+                            userSummary.breakdown.push(`<span style="color:#1e293b;font-weight:600;">${dateStr}</span> : <span style="color:#ea580c;font-weight:600;">[${specialStatus}]</span> - (Tidak ada jam kerja tercatat)`);
                         } else {
                             userSummary.breakdown.push(`<span style="color:#dc2626;font-weight:600;">${dateStr}</span> : <span style="color:#b91c1c;">Absensi tidak lengkap</span>`);
                         }
@@ -622,14 +642,14 @@ export default function RecapPage() {
                         <div className="flex items-center gap-2">
                             <Input
                                 type="date"
-                                className="h-8 text-xs py-0 px-2 w-[110px]"
+                                className="h-8 text-xs py-0 px-2 min-w-[130px] w-auto"
                                 value={customStartDate}
                                 onChange={e => setCustomStartDate(e.target.value)}
                             />
                             <span className="text-gray-400 text-xs">-</span>
                             <Input
                                 type="date"
-                                className="h-8 text-xs py-0 px-2 w-[110px]"
+                                className="h-8 text-xs py-0 px-2 min-w-[130px] w-auto"
                                 value={customEndDate}
                                 onChange={e => setCustomEndDate(e.target.value)}
                             />

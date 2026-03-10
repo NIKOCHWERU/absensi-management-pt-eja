@@ -484,14 +484,14 @@ export default function AttendanceHistoryPage() {
                                 <div className="flex items-center gap-2">
                                     <Input
                                         type="date"
-                                        className="h-8 text-xs py-0 px-2 w-[110px]"
+                                        className="h-8 text-xs py-0 px-2 min-w-[130px] w-auto"
                                         value={customStartDate}
                                         onChange={e => setCustomStartDate(e.target.value)}
                                     />
                                     <span className="text-gray-400 text-xs">-</span>
                                     <Input
                                         type="date"
-                                        className="h-8 text-xs py-0 px-2 w-[110px]"
+                                        className="h-8 text-xs py-0 px-2 min-w-[130px] w-auto"
                                         value={customEndDate}
                                         onChange={e => setCustomEndDate(e.target.value)}
                                     />
