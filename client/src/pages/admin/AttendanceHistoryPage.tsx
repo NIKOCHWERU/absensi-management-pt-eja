@@ -37,6 +37,8 @@ export default function AttendanceHistoryPage() {
     const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [searchName, setSearchName] = useState("");
+    const [sortField, setSortField] = useState<'date' | 'name'>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const { data: attendanceHistory, isLoading: isLoadingAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
@@ -106,10 +108,24 @@ export default function AttendanceHistoryPage() {
         e.setHours(23, 59, 59, 999);
         return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
     }).sort((a, b) => {
-        const nameA = getEmployee(a.userId)?.fullName || '';
-        const nameB = getEmployee(b.userId)?.fullName || '';
-        if (nameA !== nameB) return nameA.localeCompare(nameB);
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (sortField === 'date') {
+            const dateA = new Date(a.date).setHours(0, 0, 0, 0);
+            const dateB = new Date(b.date).setHours(0, 0, 0, 0);
+
+            if (dateA !== dateB) return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+
+            // Secondary: Name
+            const nameA = getEmployee(a.userId)?.fullName || '';
+            const nameB = getEmployee(b.userId)?.fullName || '';
+            return nameA.localeCompare(nameB);
+        } else {
+            const nameA = getEmployee(a.userId)?.fullName || '';
+            const nameB = getEmployee(b.userId)?.fullName || '';
+            if (nameA !== nameB) return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+
+            // Secondary: Date DESC
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+        }
     }) || [];
 
     const getDriveViewLink = (url: string | null) => {
@@ -483,6 +499,36 @@ export default function AttendanceHistoryPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-2 bg-white border rounded-md p-1">
+                            <Select value={sortField} onValueChange={(v: any) => setSortField(v)}>
+                                <SelectTrigger className="w-[110px] h-8 text-xs border-none bg-transparent">
+                                    <SelectValue placeholder="Urutkan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="date">Tanggal</SelectItem>
+                                    <SelectItem value="name">Nama</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
+                                <SelectTrigger className="w-[110px] h-8 text-xs border-none bg-transparent">
+                                    <SelectValue placeholder="Order" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sortField === 'date' ? (
+                                        <>
+                                            <SelectItem value="desc">Terbaru</SelectItem>
+                                            <SelectItem value="asc">Terlama</SelectItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SelectItem value="asc">A-Z</SelectItem>
+                                            <SelectItem value="desc">Z-A</SelectItem>
+                                        </>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="flex items-center gap-2 bg-white border rounded-md p-1">
                             <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
                                 <SelectTrigger className="w-[120px] h-8 border-none bg-transparent">
