@@ -33,7 +33,9 @@ export default function AttendanceHistoryPage() {
     const [, setLocation] = useLocation();
     const { logout } = useAuth();
     const [targetDate, setTargetDate] = useState(new Date());
-    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("daily");
+    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
+    const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+    const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
     const { data: attendanceHistory, isLoading: isLoadingAttendance } = useQuery<Attendance[]>({
         queryKey: ["/api/attendance"],
@@ -53,6 +55,9 @@ export default function AttendanceHistoryPage() {
     } else if (reportType === "weekly") {
         startDate = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
         endDate = endOfWeek(targetDate, { weekStartsOn: 1 });
+    } else if (reportType === "custom") {
+        startDate = startOfDay(new Date(customStartDate));
+        endDate = endOfDay(new Date(customEndDate));
     } else {
         // Default: 26th of previous month to 25th of current month
         startDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 26);
@@ -122,6 +127,8 @@ export default function AttendanceHistoryPage() {
             periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
         } else if (reportType === 'weekly') {
             periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+        } else if (reportType === 'custom') {
+            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
         } else {
             periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
         }
@@ -232,7 +239,7 @@ export default function AttendanceHistoryPage() {
 
   <div class="report-meta">
     <h2>Laporan Riwayat & Foto Absensi</h2>
-    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
     <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
   </div>
   
@@ -469,20 +476,41 @@ export default function AttendanceHistoryPage() {
                                     <SelectItem value="daily">Harian</SelectItem>
                                     <SelectItem value="weekly">Mingguan</SelectItem>
                                     <SelectItem value="monthly">Bulanan</SelectItem>
+                                    <SelectItem value="custom">Kustom Pilihan</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm font-medium min-w-[120px] text-center">
-                                {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                    reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
-                                        format(targetDate, "MMMM yyyy", { locale: id })}
-                            </span>
-                            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
+                            {reportType === 'custom' ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type="date"
+                                        className="h-8 text-xs py-0 px-2 w-[110px]"
+                                        value={customStartDate}
+                                        onChange={e => setCustomStartDate(e.target.value)}
+                                    />
+                                    <span className="text-gray-400 text-xs">-</span>
+                                    <Input
+                                        type="date"
+                                        className="h-8 text-xs py-0 px-2 w-[110px]"
+                                        value={customEndDate}
+                                        onChange={e => setCustomEndDate(e.target.value)}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-sm font-medium min-w-[120px] text-center">
+                                        {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
+                                                format(targetDate, "MMMM yyyy", { locale: id })}
+                                    </span>
+                                    <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </>
+                            )}
                         </div>
                         <Button variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" onClick={handleExport}>
                             <FileDown className="h-4 w-4" /> Export HTML

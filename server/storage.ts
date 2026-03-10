@@ -269,6 +269,94 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(leaveRequests.createdAt))
       .limit(limit);
   }
+
+  // Backup & Restore
+  async exportDatabase(): Promise<any> {
+    const allUsers = await db.select().from(users);
+    const allAttendance = await db.select().from(attendance);
+    const allAnnouncements = await db.select().from(announcements);
+    const allComplaints = await db.select().from(complaints);
+    const allComplaintPhotos = await db.select().from(complaintPhotos);
+    const allLeaveRequests = await db.select().from(leaveRequests);
+
+    return {
+      users: allUsers,
+      attendance: allAttendance,
+      announcements: allAnnouncements,
+      complaints: allComplaints,
+      complaintPhotos: allComplaintPhotos,
+      leaveRequests: allLeaveRequests,
+    };
+  }
+
+  async importDatabase(data: any): Promise<void> {
+    // Disable FK checks and start transaction-like behavior
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0;`);
+
+    try {
+      // Clear existing
+      await db.delete(complaintPhotos);
+      await db.delete(complaints);
+      await db.delete(leaveRequests);
+      await db.delete(announcements);
+      await db.delete(attendance);
+      await db.delete(users);
+
+      // Insert new data, parsing dates back from strings
+      if (data.users && data.users.length > 0) {
+        await db.insert(users).values(data.users);
+      }
+
+      if (data.attendance && data.attendance.length > 0) {
+        const parsedAt = data.attendance.map((a: any) => ({
+          ...a,
+          date: new Date(a.date),
+          checkIn: a.checkIn ? new Date(a.checkIn) : null,
+          breakStart: a.breakStart ? new Date(a.breakStart) : null,
+          breakEnd: a.breakEnd ? new Date(a.breakEnd) : null,
+          checkOut: a.checkOut ? new Date(a.checkOut) : null,
+          permitExitAt: a.permitExitAt ? new Date(a.permitExitAt) : null,
+          permitResumeAt: a.permitResumeAt ? new Date(a.permitResumeAt) : null,
+        }));
+        // Chunk inserts if too large, but for now just single array
+        await db.insert(attendance).values(parsedAt);
+      }
+
+      if (data.announcements && data.announcements.length > 0) {
+        const parsedAn = data.announcements.map((a: any) => ({
+          ...a,
+          expiresAt: a.expiresAt ? new Date(a.expiresAt) : null,
+          createdAt: a.createdAt ? new Date(a.createdAt) : null,
+        }));
+        await db.insert(announcements).values(parsedAn);
+      }
+
+      if (data.complaints && data.complaints.length > 0) {
+        const parsedC = data.complaints.map((c: any) => ({
+          ...c,
+          createdAt: c.createdAt ? new Date(c.createdAt) : null,
+        }));
+        await db.insert(complaints).values(parsedC);
+      }
+
+      if (data.complaintPhotos && data.complaintPhotos.length > 0) {
+        await db.insert(complaintPhotos).values(data.complaintPhotos);
+      }
+
+      if (data.leaveRequests && data.leaveRequests.length > 0) {
+        const parsedL = data.leaveRequests.map((l: any) => ({
+          ...l,
+          startDate: new Date(l.startDate),
+          endDate: new Date(l.endDate),
+          createdAt: l.createdAt ? new Date(l.createdAt) : null,
+        }));
+        await db.insert(leaveRequests).values(parsedL);
+      }
+    } finally {
+      // Always re-enable FK checks
+      await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`);
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -315,4 +403,8 @@ export interface IStorage {
   updateLeaveRequestStatus(id: number, status: string): Promise<LeaveRequest>;
   getApprovedLeaveDaysCount(userId: number, year: number): Promise<number>;
   getRecentLeaveRequests(limit?: number): Promise<LeaveRequest[]>;
+
+  // Backup & Restore methods
+  exportDatabase(): Promise<any>;
+  importDatabase(data: any): Promise<void>;
 }

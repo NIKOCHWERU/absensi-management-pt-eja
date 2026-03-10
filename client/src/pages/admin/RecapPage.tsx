@@ -57,7 +57,9 @@ export default function RecapPage() {
         refetchInterval: 10000,
     });
 
-    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("daily");
+    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
+    const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+    const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
     // Calculate Period Range
     let startDate: Date;
@@ -69,6 +71,9 @@ export default function RecapPage() {
     } else if (reportType === "weekly") {
         startDate = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
         endDate = endOfWeek(targetDate, { weekStartsOn: 1 });
+    } else if (reportType === "custom") {
+        startDate = startOfDay(new Date(customStartDate));
+        endDate = endOfDay(new Date(customEndDate));
     } else {
         // Default: 26th of previous month to 25th of current month
         startDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 26);
@@ -273,6 +278,8 @@ export default function RecapPage() {
             periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
         } else if (reportType === 'weekly') {
             periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+        } else if (reportType === 'custom') {
+            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
         } else {
             periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
         }
@@ -373,7 +380,7 @@ export default function RecapPage() {
 
   <div class="report-meta">
     <h2>Laporan Rekapitulasi Absensi</h2>
-    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
     <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
   </div>
 
@@ -517,7 +524,7 @@ export default function RecapPage() {
                 let sumHtml = `<div style="page-break-before: always; padding-top: 20px;">
               <div class="report-meta">
                 <h2>Rekapitulasi Total Jam Kerja</h2>
-                <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
+                <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
                 <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
                 <p class="sub" style="font-size:9.5px;color:#ef4444;margin-top:6px;max-width:400px;margin-left:auto;margin-right:auto;">
                   *Hanya menghitung jam kerja jika karyawan melakukan minimal: absen masuk & absen pulang (termasuk tanpa istirahat) dalam 1 hari.
@@ -607,20 +614,41 @@ export default function RecapPage() {
                             <SelectItem value="daily">Harian</SelectItem>
                             <SelectItem value="weekly">Mingguan</SelectItem>
                             <SelectItem value="monthly">Bulanan</SelectItem>
+                            <SelectItem value="custom">Kustom Pilihan</SelectItem>
                         </SelectContent>
                     </Select>
                     <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                    <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium min-w-[120px] text-center">
-                        {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
-                                format(targetDate, "MMMM yyyy", { locale: id })}
-                    </span>
-                    <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    {reportType === 'custom' ? (
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="date"
+                                className="h-8 text-xs py-0 px-2 w-[110px]"
+                                value={customStartDate}
+                                onChange={e => setCustomStartDate(e.target.value)}
+                            />
+                            <span className="text-gray-400 text-xs">-</span>
+                            <Input
+                                type="date"
+                                className="h-8 text-xs py-0 px-2 w-[110px]"
+                                value={customEndDate}
+                                onChange={e => setCustomEndDate(e.target.value)}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-medium min-w-[120px] text-center">
+                                {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                    reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
+                                        format(targetDate, "MMMM yyyy", { locale: id })}
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </>
+                    )}
                 </div>
             </header>
 

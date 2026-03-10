@@ -1091,5 +1091,35 @@ export async function registerRoutes(
     }
   });
 
+  // --- Admin Backup & Restore Routes ---
+  app.get("/api/admin/backup", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+
+    try {
+      const data = await storage.exportDatabase();
+      const filename = `backup-eja-${format(new Date(), "yyyy-MM-dd-HHmmss")}.json`;
+      res.setHeader('Content-disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-type', 'application/json');
+      res.send(JSON.stringify(data));
+    } catch (err: any) {
+      console.error("Backup Error:", err);
+      res.status(500).json({ message: "Failed to create backup: " + err.message });
+    }
+  });
+
+  app.post("/api/admin/restore", upload.single('backup'), async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ message: "No backup file provided" });
+
+    try {
+      const data = JSON.parse(req.file.buffer.toString('utf-8'));
+      await storage.importDatabase(data);
+      res.json({ success: true, message: "Database restored successfully" });
+    } catch (err: any) {
+      console.error("Restore Error:", err);
+      res.status(500).json({ message: "Failed to restore database. Ensure the file is valid JSON." });
+    }
+  });
+
   return httpServer;
 }

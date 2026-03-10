@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info, AlertCircle , Image as ImageIcon} from "lucide-react";
+import { Users, Clock, CalendarDays, UserPlus, LogOut, FileText, MessageSquare, History, Info, AlertCircle, Image as ImageIcon, DatabaseBackup, UploadCloud } from "lucide-react";
 import {
     BarChart,
     Bar,
@@ -45,6 +45,40 @@ export default function AdminDashboard() {
     const { logout } = useAuth();
     const { toast } = useToast();
     const [absenceDate, setAbsenceDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const handleBackup = () => {
+        window.location.href = "/api/admin/backup";
+    };
+
+    const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const confirmRestore = confirm("WARNING! Restore akan menimpa seluruh data (Karyawan, Absensi, Cuti, dll) saat ini. Lanjutkan?");
+        if (!confirmRestore) {
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("backup", file);
+
+        try {
+            const res = await fetch("/api/admin/restore", {
+                method: "POST",
+                body: formData
+            });
+            if (res.ok) {
+                toast({ title: "Berhasil", description: "Database berhasil di-restore." });
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                const json = await res.json();
+                toast({ title: "Gagal", description: json.message || "Gagal restore database", variant: "destructive" });
+            }
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message || "Gagal menghubungi server", variant: "destructive" });
+        }
+    };
 
     const { data: stats } = useQuery<{ totalEmployees: number; presentToday: number }>({
         queryKey: ["/api/admin/stats"],
@@ -775,6 +809,54 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* DB Backup Restore */}
+                <Card className="border border-orange-100 shadow-md bg-white mt-8 overflow-hidden">
+                    <CardHeader className="bg-orange-50/50 border-b border-orange-100 pb-4">
+                        <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <DatabaseBackup className="text-orange-600 w-5 h-5" />
+                            Backup & Restore Database
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-6">
+                            <div className="flex-1 bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-between">
+                                <div>
+                                    <h4 className="font-bold text-green-800 flex items-center gap-2 mb-2">
+                                        <DatabaseBackup className="w-4 h-4" /> Export Backup
+                                    </h4>
+                                    <p className="text-xs text-green-700 mb-4">
+                                        Unduh seluruh data absensi, karyawan, dan pengaturan sistem dalam format JSON. Simpan file ini di tempat yang aman.
+                                    </p>
+                                </div>
+                                <Button onClick={handleBackup} className="bg-green-600 hover:bg-green-700 text-white font-bold w-full md:w-auto">
+                                    <DatabaseBackup className="w-4 h-4 mr-2" /> Download Backup Database
+                                </Button>
+                            </div>
+                            <div className="flex-1 bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-between">
+                                <div>
+                                    <h4 className="font-bold text-red-800 flex items-center gap-2 mb-2">
+                                        <UploadCloud className="w-4 h-4" /> Import Restore
+                                    </h4>
+                                    <p className="text-xs text-red-700 mb-4">
+                                        Kembalikan data dari file backup (.json). <strong className="text-red-600">Peringatan:</strong> Proses ini akan menghapus data yang ada saat ini dan menggantinya dengan data dari backup.
+                                    </p>
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        accept=".json"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        onChange={handleRestore}
+                                    />
+                                    <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-100 font-bold w-full md:w-auto pointer-events-none relative z-0">
+                                        <UploadCloud className="w-4 h-4 mr-2" /> Restore dari File Backup
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
             </main>
         </div>
