@@ -52,6 +52,7 @@ export const attendance = mysqlTable("attendance", {
   lateReasonPhoto: varchar("late_reason_photo", { length: 255 }),
   permitExitAt: timestamp("permit_exit_at"), // When they left for permit mid-day
   permitResumeAt: timestamp("permit_resume_at"), // When they resumed work
+  permitDuration: int("permit_duration").default(0), // Duration in minutes to subtract from work time
 }, (table) => ({
   userIdIdx: index("idx_attendance_user_id").on(table.userId),
   dateIdx: index("idx_attendance_date").on(table.date),

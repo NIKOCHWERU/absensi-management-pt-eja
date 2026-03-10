@@ -102,6 +102,7 @@ export default function EmployeeDashboard() {
 
     const [permitOpen, setPermitOpen] = useState(false);
     const [permitNote, setPermitNote] = useState("");
+    const [permitDuration, setPermitDuration] = useState("0");
     const [permitType, setPermitType] = useState<"sick" | "permission">("permission");
     const [isCameraOpen, setIsCameraOpen] = useState(false);
 
@@ -298,6 +299,7 @@ export default function EmployeeDashboard() {
                 return permit({
                     type: permitType,
                     notes: permitNote,
+                    permitDuration: parseInt(permitDuration) || 0,
                     checkInPhoto: data.checkInPhoto,
                     location: data.location
                 });

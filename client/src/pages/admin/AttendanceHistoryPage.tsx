@@ -386,11 +386,25 @@ export default function AttendanceHistoryPage() {
                   <div style="font-family:monospace;font-size:10.5px;line-height:1.4;">
                     IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
                     BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
-                    OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span>
+                    OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span><br/>
+                    ${(r as any).permitDuration > 0 ? `PERMIT: <span style="color:#7c3aed;font-weight:bold;">${(r as any).permitDuration} Jam</span><br/>` : ''}
+                    <div style="border-top:1px solid #eee; margin-top:4px; padding-top:4px; font-weight:bold;">
+                      ${(() => {
+                        if (r.checkIn && r.checkOut) {
+                            const totalMinutes = Math.floor((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 60000);
+                            const permitMinutes = ((r as any).permitDuration || 0) * 60;
+                            const adjustedMinutes = Math.max(0, totalMinutes - permitMinutes);
+                            const hCount = Math.floor(adjustedMinutes / 60);
+                            const mCount = adjustedMinutes % 60;
+                            return `TOTAL: ${hCount}j ${mCount}m`;
+                        }
+                        return 'TIDAK LENGKAP';
+                    })()}
+                    </div>
                   </div>
-                  <div style="margin-top:6px; font-size:8.5px; color:#64748b; line-height:1.2; max-width:140px; word-break:break-word;">
-                    <span style="font-weight:bold; color:#475569; display:block; margin-bottom:1px;">LOKASI MASUK:</span>
-                    ${checkInLoc}
+                  <div style="margin-top:8px; font-size:8.5px; color:#64748b; line-height:1.2; max-width:140px; word-break:break-word; background:#f8fafc; padding:4px; border-radius:4px;">
+                    <span style="font-weight:bold; color:#475569; display:block; margin-bottom:2px; text-transform:uppercase; font-size:8px;">📍 Lokasi Masuk:</span>
+                    ${checkInLoc || '-'}
                   </div>
                 </td>
                 <td>
@@ -715,6 +729,31 @@ export default function AttendanceHistoryPage() {
                                                                 <div className="flex justify-between w-32">
                                                                     <span className="text-gray-500">Pulang:</span>
                                                                     <span className="font-bold text-red-600">{record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}</span>
+                                                                </div>
+
+                                                                {(record as any).permitDuration > 0 && (
+                                                                    <div className="flex justify-between w-32 pt-1 border-t border-gray-100 mt-1">
+                                                                        <span className="text-gray-500 font-bold">Izin:</span>
+                                                                        <span className="font-bold text-purple-600">{(record as any).permitDuration} Jam</span>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="mt-2 border-t border-gray-100 pt-1">
+                                                                    <p className="text-[10px] font-bold text-gray-900">
+                                                                        {(() => {
+                                                                            if (record.checkIn && record.checkOut) {
+                                                                                const totalMinutes = Math.floor((new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 60000);
+                                                                                const permitMinutes = ((record as any).permitDuration || 0) * 60;
+                                                                                const adjustedMinutes = Math.max(0, totalMinutes - permitMinutes);
+
+                                                                                const h = Math.floor(adjustedMinutes / 60);
+                                                                                const m = adjustedMinutes % 60;
+
+                                                                                return `Total Kerja: ${h}j ${m}m`;
+                                                                            }
+                                                                            return "Absensi tidak lengkap";
+                                                                        })()}
+                                                                    </p>
                                                                 </div>
                                                             </div>
 

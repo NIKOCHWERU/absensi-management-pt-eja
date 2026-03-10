@@ -290,7 +290,7 @@ export async function registerRoutes(
   app.post(api.attendance.permit.path, upload.single('photo'), async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { notes, type } = req.body;
+    const { notes, type, permitDuration, location } = req.body;
     const today = getJakartaDate();
     const userId = req.user!.id;
     const labelType = type === 'sick' ? 'Sakit' : 'Izin';
@@ -328,6 +328,8 @@ export async function registerRoutes(
         checkOut: now,
         checkOutPhoto: photoFileId,
         permitExitAt: now,
+        permitDuration: permitDuration || 0,
+        checkInLocation: location || activeSession.checkInLocation
       };
 
       // Auto-close break if employee was on break when permit submitted
@@ -351,9 +353,11 @@ export async function registerRoutes(
       status: type as any,
       notes: contextNote,
       checkInPhoto: photoFileId,
+      checkInLocation: location,
       checkIn: now,
       checkOut: now, // immediately closed — no actual work done
       sessionNumber: allSessions.length + 1,
+      permitDuration: permitDuration || 0,
     });
 
     res.json(attendance);

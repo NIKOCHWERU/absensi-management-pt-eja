@@ -130,6 +130,10 @@ export const api = {
       input: z.object({
         notes: z.string(),
         type: z.enum(['sick', 'permission']),
+        permitDuration: z.number().optional().default(0),
+        checkInPhoto: z.string().optional(),
+        location: z.string().optional(),
+        locationMetadata: z.string().optional(),
       }),
       responses: {
         200: z.custom<typeof attendance.$inferSelect>(),
