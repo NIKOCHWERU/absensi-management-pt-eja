@@ -39,6 +39,7 @@ export default function AttendanceHistoryPage() {
     const [searchName, setSearchName] = useState("");
     const [sortField, setSortField] = useState<'date' | 'name'>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [isExporting, setIsExporting] = useState(false);
 
     const toggleSort = (field: 'date' | 'name') => {
         if (sortField === field) {
@@ -172,24 +173,10 @@ export default function AttendanceHistoryPage() {
 
         const fileName = `LAPORAN RIWAYAT ABSENSI & FOTO PT EJA - ${periodStr}.html`;
 
-        // Fetch logo
-        let logoDataUrl = '';
-        try {
-            const logoRes = await fetch('/logo_elok_buah.jpg');
-            const logoBlob = await logoRes.blob();
-            logoDataUrl = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.readAsDataURL(logoBlob);
-            });
-        } catch (_) { /* skip logo if unavailable */ }
-
-        // Fetch images as base64
         const imageCache: Record<string, string> = {};
         const fetchImageBase64 = async (url: string) => {
             if (!url) return '';
             if (url.startsWith('data:')) return url;
-            // Using drive proxy path format from getPhotoUrl
             let resolvedUrl = url;
             if (!url.includes('/') && !url.includes('.') && url.length > 20) {
                 resolvedUrl = `/api/images/${url}`;
@@ -212,8 +199,35 @@ export default function AttendanceHistoryPage() {
             }
         };
 
-        // Prepare HTML
-        let html = `<!DOCTYPE html>
+        setIsExporting(true);
+        try {
+            // Fetch logo
+            let logoDataUrl = '';
+            try {
+                const logoRes = await fetch('/logo_elok_buah.jpg');
+                const logoBlob = await logoRes.blob();
+                logoDataUrl = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(logoBlob);
+                });
+            } catch (_) { /* skip logo if unavailable */ }
+
+            // Collect all unique URLs
+            const uniqueUrls = new Set<string>();
+            filteredRecords.forEach(r => {
+                if (r.checkInPhoto) uniqueUrls.add(r.checkInPhoto);
+                if (r.breakStartPhoto) uniqueUrls.add(r.breakStartPhoto);
+                if (r.breakEndPhoto) uniqueUrls.add(r.breakEndPhoto);
+                if (r.checkOutPhoto) uniqueUrls.add(r.checkOutPhoto);
+                if ((r as any).lateReasonPhoto) uniqueUrls.add((r as any).lateReasonPhoto);
+            });
+
+            // Parallel fetch all images
+            await Promise.all(Array.from(uniqueUrls).map(url => fetchImageBase64(url)));
+
+            // Prepare HTML
+            let html = `<!DOCTYPE html>
 <html>
 <head>
   <title>${fileName}</title>
@@ -293,55 +307,63 @@ export default function AttendanceHistoryPage() {
     </thead>
     <tbody>`;
 
-        if (filteredRecords.length === 0) {
-            html += `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Tidak ada data absensi</td></tr>`;
-        }
-
-        let lastShownName = "";
-        for (let i = 0; i < filteredRecords.length; i++) {
-            const r = filteredRecords[i];
-            const emp = getEmployee(r.userId);
-            const currentName = emp?.fullName || '-';
-            const isSameAsPrev = currentName === lastShownName;
-            lastShownName = currentName;
-
-            const sts = r.status || '-';
-            const statusLabel = sts === 'present' ? 'Hadir' : sts === 'late' ? 'Telat' : sts === 'sick' ? 'Sakit' : sts === 'permission' ? 'Izin' : sts === 'cuti' ? 'Cuti' : sts === 'absent' ? 'Alpha' : sts;
-            const statusClass = sts === 'present' ? 'st-hadir' : sts === 'late' ? 'st-telat' : sts === 'sick' ? 'st-sakit' : sts === 'permission' ? 'st-izin' : sts === 'cuti' ? 'st-cuti' : sts === 'absent' ? 'st-alpha' : 'st-unknown';
-
-            const tIn = r.checkIn ? format(new Date(r.checkIn), 'HH:mm') : '-';
-            const tBrkS = r.breakStart ? format(new Date(r.breakStart), 'HH:mm') : '-';
-            const tBrkE = r.breakEnd ? format(new Date(r.breakEnd), 'HH:mm') : '-';
-            const tOut = r.checkOut ? format(new Date(r.checkOut), 'HH:mm') : '-';
-
-            let photosHtml = '<div class="photo-grid">';
-            const addPhoto = async (url: string | null, label: string) => {
-                if (url) {
-                    const b64 = await fetchImageBase64(url);
-                    if (b64) {
-                        photosHtml += `<div class="photo-item"><img src="${b64}" class="photo-img"/><div class="photo-label">${label}</div></div>`;
-                    } else {
-                        photosHtml += `<div class="photo-item"><div style="height:65px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;">No Image</div><div class="photo-label">${label}</div></div>`;
-                    }
-                }
-            };
-
-            await addPhoto(r.checkInPhoto, 'Masuk');
-            await addPhoto(r.breakStartPhoto, 'Mulai Ist.');
-            await addPhoto(r.breakEndPhoto, 'Selesai Ist.');
-            await addPhoto(r.checkOutPhoto, 'Pulang');
-            await addPhoto((r as any).lateReasonPhoto, 'Bukti Telat');
-            photosHtml += '</div>';
-
-            if (photosHtml === '<div class="photo-grid"></div>') {
-                photosHtml = '<span style="color:#94a3b8;font-style:italic;font-size:9px;">Tidak ada bukti foto</span>';
+            if (filteredRecords.length === 0) {
+                html += `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Tidak ada data absensi</td></tr>`;
             }
 
-            let extraNotes = '';
-            if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
-            if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
+            let lastShownName = "";
+            for (let i = 0; i < filteredRecords.length; i++) {
+                const r = filteredRecords[i];
+                const emp = getEmployee(r.userId);
+                const currentName = emp?.fullName || '-';
+                const isSameAsPrev = currentName === lastShownName;
+                lastShownName = currentName;
 
-            html += `<tr>
+                const sts = r.status || '-';
+                const statusLabel = sts === 'present' ? 'Hadir' : sts === 'late' ? 'Telat' : sts === 'sick' ? 'Sakit' : sts === 'permission' ? 'Izin' : sts === 'cuti' ? 'Cuti' : sts === 'absent' ? 'Alpha' : sts;
+                const statusClass = sts === 'present' ? 'st-hadir' : sts === 'late' ? 'st-telat' : sts === 'sick' ? 'st-sakit' : sts === 'permission' ? 'st-izin' : sts === 'cuti' ? 'st-cuti' : sts === 'absent' ? 'st-alpha' : 'st-unknown';
+
+                const tIn = r.checkIn ? format(new Date(r.checkIn), 'HH:mm') : '-';
+                const tBrkS = r.breakStart ? format(new Date(r.breakStart), 'HH:mm') : '-';
+                const tBrkE = r.breakEnd ? format(new Date(r.breakEnd), 'HH:mm') : '-';
+                const tOut = r.checkOut ? format(new Date(r.checkOut), 'HH:mm') : '-';
+
+                let photosHtml = '<div class="photo-grid">';
+                const addPhoto = (url: string | null, label: string) => {
+                    if (url) {
+                        // Drive proxy path logic duplicated or use a helper
+                        let resolvedUrl = url;
+                        if (!url.includes('/') && !url.includes('.') && url.length > 20) {
+                            resolvedUrl = `/api/images/${url}`;
+                        } else if (!url.startsWith('http') && !url.startsWith('data:')) {
+                            resolvedUrl = `/uploads/${url}`;
+                        }
+
+                        const b64 = imageCache[resolvedUrl] || (url.startsWith('data:') ? url : '');
+                        if (b64) {
+                            photosHtml += `<div class="photo-item"><img src="${b64}" class="photo-img"/><div class="photo-label">${label}</div></div>`;
+                        } else {
+                            photosHtml += `<div class="photo-item"><div style="height:65px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;">No Image</div><div class="photo-label">${label}</div></div>`;
+                        }
+                    }
+                };
+
+                addPhoto(r.checkInPhoto, 'Masuk');
+                addPhoto(r.breakStartPhoto, 'Mulai Ist.');
+                addPhoto(r.breakEndPhoto, 'Selesai Ist.');
+                addPhoto(r.checkOutPhoto, 'Pulang');
+                addPhoto((r as any).lateReasonPhoto, 'Bukti Telat');
+                photosHtml += '</div>';
+
+                if (photosHtml === '<div class="photo-grid"></div>') {
+                    photosHtml = '<span style="color:#94a3b8;font-style:italic;font-size:9px;">Tidak ada bukti foto</span>';
+                }
+
+                let extraNotes = '';
+                if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
+                if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
+
+                html += `<tr>
                 <td class="c">${isSameAsPrev ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
                 <td>${format(new Date(r.date), 'dd/MM/yyyy')}</td>
                 <td>${isSameAsPrev ? '' : `<b style="color:#1d4ed8;">${currentName}</b>`}</td>
@@ -356,9 +378,9 @@ export default function AttendanceHistoryPage() {
                 </td>
                 <td>${photosHtml}</td>
             </tr>`;
-        }
+            }
 
-        html += `
+            html += `
     </tbody>
   </table>
 
@@ -381,9 +403,12 @@ export default function AttendanceHistoryPage() {
 </body>
 </html>`;
 
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const SidebarContent = () => (
