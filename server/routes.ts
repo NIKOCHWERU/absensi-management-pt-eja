@@ -681,14 +681,20 @@ export async function registerRoutes(
     // Present today - use Jakarta timezone for consistency
     const today = getJakartaDate();
     const allAttendance = await storage.getAttendanceHistory(undefined, undefined);
-    const todayRecords = allAttendance.filter(a => {
-      const dateStr = typeof a.date === 'string' ? a.date : new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-      return dateStr === today && (a.status === 'present' || a.status === 'late');
-    });
+
+    // Count unique user IDs who have at least one 'present' or 'late' session today
+    const uniquePresentUsers = new Set(
+      allAttendance
+        .filter(a => {
+          const dateStr = typeof a.date === 'string' ? a.date : new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+          return dateStr === today && (a.status === 'present' || a.status === 'late');
+        })
+        .map(a => a.userId)
+    );
 
     res.json({
       totalEmployees,
-      presentToday: todayRecords.length,
+      presentToday: uniquePresentUsers.size,
     });
   });
 

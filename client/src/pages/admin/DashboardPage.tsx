@@ -497,11 +497,16 @@ export default function AdminDashboard() {
                                                 // Filter history for this day
                                                 const dailyRecs = attendanceHistory?.filter(a => String(a.date).startsWith(dateStr)) || [];
 
+                                                // Count unique USERS for each status category
+                                                const uniqueHadir = new Set(dailyRecs.filter(a => a.status === 'present').map(a => a.userId));
+                                                const uniqueTelat = new Set(dailyRecs.filter(a => a.status === 'late').map(a => a.userId));
+                                                const uniqueIzin = new Set(dailyRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).map(a => a.userId));
+
                                                 return {
                                                     name: format(day, "d MMM", { locale: id }),
-                                                    Hadir: dailyRecs.filter(a => a.status === 'present').length,
-                                                    Telat: dailyRecs.filter(a => a.status === 'late').length,
-                                                    Izin: dailyRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).length
+                                                    Hadir: uniqueHadir.size,
+                                                    Telat: uniqueTelat.size,
+                                                    Izin: uniqueIzin.size
                                                 };
                                             });
                                         })()}
@@ -573,10 +578,13 @@ export default function AdminDashboard() {
                                                 const todayRecs = attendanceHistory?.filter(a => isToday(a.date)) || [];
                                                 const totalEmps = stats?.totalEmployees || 0;
 
-                                                const present = todayRecs.filter(a => a.status === 'present').length;
-                                                const late = todayRecs.filter(a => a.status === 'late').length;
-                                                const permission = todayRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).length;
-                                                const recordedCount = todayRecs.length;
+                                                const present = new Set(todayRecs.filter(a => a.status === 'present').map(a => a.userId)).size;
+                                                const late = new Set(todayRecs.filter(a => a.status === 'late').map(a => a.userId)).size;
+                                                const permission = new Set(todayRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).map(a => a.userId)).size;
+
+                                                // Total uniquely recorded people
+                                                const recordedUserIds = new Set(todayRecs.map(a => a.userId));
+                                                const recordedCount = recordedUserIds.size;
                                                 const absent = Math.max(0, totalEmps - recordedCount);
 
                                                 return [

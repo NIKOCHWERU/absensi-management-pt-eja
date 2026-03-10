@@ -118,23 +118,29 @@ export default function AttendanceHistoryPage() {
         e.setHours(23, 59, 59, 999);
         return (isAfter(d, s) || isEqual(d, s)) && (isBefore(d, e) || isEqual(d, e));
     }).sort((a, b) => {
+        const dateA = new Date(a.date).setHours(0, 0, 0, 0);
+        const dateB = new Date(b.date).setHours(0, 0, 0, 0);
+        const nameA = getEmployee(a.userId)?.fullName || '';
+        const nameB = getEmployee(b.userId)?.fullName || '';
+
         if (sortField === 'date') {
-            const dateA = new Date(a.date).setHours(0, 0, 0, 0);
-            const dateB = new Date(b.date).setHours(0, 0, 0, 0);
-
+            // Primary: Date (Order based on sortOrder)
             if (dateA !== dateB) return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-
-            // Secondary: Name
-            const nameA = getEmployee(a.userId)?.fullName || '';
-            const nameB = getEmployee(b.userId)?.fullName || '';
-            return nameA.localeCompare(nameB);
+            // Secondary: Name (Always ASC for grouping consistency)
+            if (nameA !== nameB) return nameA.localeCompare(nameB);
+            // Tertiary: Check-In (Always ASC for cronology within day)
+            const timeA = a.checkIn ? new Date(a.checkIn).getTime() : 0;
+            const timeB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
+            return timeA - timeB;
         } else {
-            const nameA = getEmployee(a.userId)?.fullName || '';
-            const nameB = getEmployee(b.userId)?.fullName || '';
+            // Primary: Name (Order based on sortOrder)
             if (nameA !== nameB) return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-
-            // Secondary: Date DESC
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
+            // Secondary: Date (Always DESC for recent-first within name group)
+            if (dateA !== dateB) return dateB - dateA;
+            // Tertiary: Check-In (Always ASC for cronology within day)
+            const timeA = a.checkIn ? new Date(a.checkIn).getTime() : 0;
+            const timeB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
+            return timeA - timeB;
         }
     }) || [];
 
@@ -312,14 +318,19 @@ export default function AttendanceHistoryPage() {
             }
 
             let lastShownName = "";
+            let lastShownDate = "";
             for (let i = 0; i < filteredRecords.length; i++) {
                 const r = filteredRecords[i];
                 const emp = getEmployee(r.userId);
                 const currentName = emp?.fullName || '-';
-                const isSameAsPrev = currentName === lastShownName;
-                lastShownName = currentName;
+                const currentDateStr = format(new Date(r.date), 'dd/MM/yyyy');
 
-                const sts = r.status || '-';
+                // Grouping logic: Same as UI
+                const isContinuation = currentName === lastShownName && currentDateStr === lastShownDate;
+                lastShownName = currentName;
+                lastShownDate = currentDateStr;
+
+                const sts = isContinuation && r.status === 'late' ? 'present' : (r.status || '-');
                 const statusLabel = sts === 'present' ? 'Hadir' : sts === 'late' ? 'Telat' : sts === 'sick' ? 'Sakit' : sts === 'permission' ? 'Izin' : sts === 'cuti' ? 'Cuti' : sts === 'absent' ? 'Alpha' : sts;
                 const statusClass = sts === 'present' ? 'st-hadir' : sts === 'late' ? 'st-telat' : sts === 'sick' ? 'st-sakit' : sts === 'permission' ? 'st-izin' : sts === 'cuti' ? 'st-cuti' : sts === 'absent' ? 'st-alpha' : 'st-unknown';
 
@@ -331,7 +342,6 @@ export default function AttendanceHistoryPage() {
                 let photosHtml = '<div class="photo-grid">';
                 const addPhoto = (url: string | null, label: string) => {
                     if (url) {
-                        // Drive proxy path logic duplicated or use a helper
                         let resolvedUrl = url;
                         if (!url.includes('/') && !url.includes('.') && url.length > 20) {
                             resolvedUrl = `/api/images/${url}`;
@@ -361,12 +371,12 @@ export default function AttendanceHistoryPage() {
 
                 let extraNotes = '';
                 if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
-                if ((r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
+                if (sts === 'late' && (r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
 
                 html += `<tr>
-                <td class="c">${isSameAsPrev ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
-                <td>${format(new Date(r.date), 'dd/MM/yyyy')}</td>
-                <td>${isSameAsPrev ? '' : `<b style="color:#1d4ed8;">${currentName}</b>`}</td>
+                <td class="c">${isContinuation ? '<span style="color:#cbd5e1;font-weight:bold;">↳</span>' : (i + 1)}</td>
+                <td>${isContinuation ? '' : currentDateStr}</td>
+                <td>${isContinuation ? `<span style="color:#94a3b8; font-style: italic;">Sesi ${r.sessionNumber}</span>` : `<b style="color:#1d4ed8;">${currentName}</b>`}</td>
                 <td style="font-family:monospace;font-size:11px;line-height:1.4;">
                   IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
                   BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
@@ -633,23 +643,45 @@ export default function AttendanceHistoryPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 bg-white">
-                                        {filteredRecords.map((record) => {
+                                        {filteredRecords.map((record, index) => {
                                             const emp = getEmployee(record.userId);
+                                            const recordDateStr = format(new Date(record.date), 'dd/MM/yyyy');
+
+                                            // Grouping logic: Hide name if same as previous row AND SAME DATE
+                                            const prevRecord = index > 0 ? filteredRecords[index - 1] : null;
+                                            const prevEmpName = prevRecord ? getEmployee(prevRecord.userId)?.fullName : null;
+                                            const prevDateStr = prevRecord ? format(new Date(prevRecord.date), 'dd/MM/yyyy') : null;
+                                            const isContinuation = emp?.fullName === prevEmpName && recordDateStr === prevDateStr;
+
+                                            // Status Override: If it's a continuation row, and status is "late", 
+                                            // we might want to show it as "present" if the first session was captured properly.
+                                            // For sub-rows, let's override 'late' to 'present' to avoid confusion.
+                                            const effectiveStatus = isContinuation && record.status === 'late' ? 'present' : record.status;
+
                                             return (
                                                 <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
                                                     <td className="px-6 py-4">
-                                                        <span className="text-xs font-semibold text-gray-500">{format(new Date(record.date), 'dd/MM/yyyy')}</span>
+                                                        <span className="text-xs font-semibold text-gray-500">
+                                                            {isContinuation ? '' : recordDateStr}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
-                                                                {emp?.fullName?.charAt(0) || '?'}
+                                                        {isContinuation ? (
+                                                            <div className="flex items-center gap-3 ml-6 opacity-40">
+                                                                <span className="text-gray-400">↳</span>
+                                                                <span className="text-xs italic text-gray-400">Sesi {record.sessionNumber}</span>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
-                                                                <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
+                                                        ) : (
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
+                                                                    {emp?.fullName?.charAt(0) || '?'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-gray-900">{emp?.fullName || 'Unknown'}</p>
+                                                                    <p className="text-[11px] text-gray-500">{emp?.nik || emp?.username}</p>
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-1 text-[11px] font-mono">
@@ -688,20 +720,20 @@ export default function AttendanceHistoryPage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-2 items-start max-w-[200px]">
-                                                            <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
-                                                                ${record.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                                    record.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                        record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                            record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                                record.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase
+                                                                ${effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
+                                                                    effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                        effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                            effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                                effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
                                                                                     'bg-gray-100 text-gray-700'
-                                                                } `}>
-                                                                {record.status === 'present' ? 'Hadir' :
-                                                                    record.status === 'late' ? 'Telat' :
-                                                                        record.status === 'sick' ? 'Sakit' :
-                                                                            record.status === 'permission' ? 'Izin' :
-                                                                                record.status === 'cuti' ? 'Cuti' :
-                                                                                    record.status === 'absent' ? 'Alpha' : record.status}
+                                                                }`}>
+                                                                {effectiveStatus === 'present' ? 'Hadir' :
+                                                                    effectiveStatus === 'late' ? 'Telat' :
+                                                                        effectiveStatus === 'sick' ? 'Sakit' :
+                                                                            effectiveStatus === 'permission' ? 'Izin' :
+                                                                                effectiveStatus === 'cuti' ? 'Cuti' :
+                                                                                    effectiveStatus === 'absent' ? 'Alpha' : effectiveStatus}
                                                             </span>
 
                                                             {record.notes && (
@@ -710,7 +742,7 @@ export default function AttendanceHistoryPage() {
                                                                     {record.notes}
                                                                 </p>
                                                             )}
-                                                            {(record as any).lateReason && (
+                                                            {(effectiveStatus === 'late' && (record as any).lateReason) && (
                                                                 <p className="text-xs text-orange-700 whitespace-normal bg-orange-50 p-2 rounded border border-orange-100 w-full" style={{ wordBreak: 'break-word' }}>
                                                                     <span className="font-semibold block mb-0.5">Alasan Telat:</span>
                                                                     {(record as any).lateReason}
