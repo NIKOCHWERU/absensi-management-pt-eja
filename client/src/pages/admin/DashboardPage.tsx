@@ -238,6 +238,10 @@ export default function AdminDashboard() {
                             <History className="mr-2 h-4 w-4" />
                             Riwayat Cuti
                         </Button>
+                        <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/database-backup")}>
+                            <DatabaseBackup className="mr-2 h-4 w-4" />
+                            Database Backup
+                        </Button>
                         <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/info-board")}>
                             <FileText className="mr-2 h-4 w-4" />
                             Papan Informasi
@@ -497,16 +501,26 @@ export default function AdminDashboard() {
                                                 // Filter history for this day
                                                 const dailyRecs = attendanceHistory?.filter(a => String(a.date).startsWith(dateStr)) || [];
 
-                                                // Count unique USERS for each status category
-                                                const uniqueHadir = new Set(dailyRecs.filter(a => a.status === 'present').map(a => a.userId));
-                                                const uniqueTelat = new Set(dailyRecs.filter(a => a.status === 'late').map(a => a.userId));
-                                                const uniqueIzin = new Set(dailyRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).map(a => a.userId));
+                                                // Group securely by user to get unique daily status
+                                                const userStatusMap = new Map();
+                                                [...dailyRecs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(rec => {
+                                                    if (!userStatusMap.has(rec.userId)) {
+                                                        userStatusMap.set(rec.userId, rec.status);
+                                                    }
+                                                });
+
+                                                let countHadir = 0, countTelat = 0, countIzin = 0;
+                                                userStatusMap.forEach(status => {
+                                                    if (status === 'present') countHadir++;
+                                                    else if (status === 'late') countTelat++;
+                                                    else if (status === 'sick' || status === 'permission') countIzin++;
+                                                });
 
                                                 return {
                                                     name: format(day, "d MMM", { locale: id }),
-                                                    Hadir: uniqueHadir.size,
-                                                    Telat: uniqueTelat.size,
-                                                    Izin: uniqueIzin.size
+                                                    Hadir: countHadir,
+                                                    Telat: countTelat,
+                                                    Izin: countIzin
                                                 };
                                             });
                                         })()}
@@ -578,13 +592,22 @@ export default function AdminDashboard() {
                                                 const todayRecs = attendanceHistory?.filter(a => isToday(a.date)) || [];
                                                 const totalEmps = stats?.totalEmployees || 0;
 
-                                                const present = new Set(todayRecs.filter(a => a.status === 'present').map(a => a.userId)).size;
-                                                const late = new Set(todayRecs.filter(a => a.status === 'late').map(a => a.userId)).size;
-                                                const permission = new Set(todayRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).map(a => a.userId)).size;
+                                                const userStatusMap = new Map();
+                                                [...todayRecs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(rec => {
+                                                    if (!userStatusMap.has(rec.userId)) {
+                                                        userStatusMap.set(rec.userId, rec.status);
+                                                    }
+                                                });
+
+                                                let present = 0, late = 0, permission = 0;
+                                                userStatusMap.forEach(status => {
+                                                    if (status === 'present') present++;
+                                                    else if (status === 'late') late++;
+                                                    else if (status === 'sick' || status === 'permission') permission++;
+                                                });
 
                                                 // Total uniquely recorded people
-                                                const recordedUserIds = new Set(todayRecs.map(a => a.userId));
-                                                const recordedCount = recordedUserIds.size;
+                                                const recordedCount = userStatusMap.size;
                                                 const absent = Math.max(0, totalEmps - recordedCount);
 
                                                 return [
@@ -609,10 +632,21 @@ export default function AdminDashboard() {
                                                 const todayRecs = attendanceHistory?.filter(a => isToday(a.date)) || [];
                                                 const totalEmps = stats?.totalEmployees || 0;
 
-                                                const present = todayRecs.filter(a => a.status === 'present').length;
-                                                const late = todayRecs.filter(a => a.status === 'late').length;
-                                                const permission = todayRecs.filter(a => a.status && ['sick', 'permission'].includes(a.status)).length;
-                                                const recordedCount = todayRecs.length;
+                                                const userStatusMap = new Map();
+                                                [...todayRecs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(rec => {
+                                                    if (!userStatusMap.has(rec.userId)) {
+                                                        userStatusMap.set(rec.userId, rec.status);
+                                                    }
+                                                });
+
+                                                let present = 0, late = 0, permission = 0;
+                                                userStatusMap.forEach(status => {
+                                                    if (status === 'present') present++;
+                                                    else if (status === 'late') late++;
+                                                    else if (status === 'sick' || status === 'permission') permission++;
+                                                });
+
+                                                const recordedCount = userStatusMap.size;
                                                 const absent = Math.max(0, totalEmps - recordedCount);
 
                                                 return [
@@ -817,54 +851,6 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* DB Backup Restore */}
-                <Card className="border border-orange-100 shadow-md bg-white mt-8 overflow-hidden">
-                    <CardHeader className="bg-orange-50/50 border-b border-orange-100 pb-4">
-                        <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                            <DatabaseBackup className="text-orange-600 w-5 h-5" />
-                            Backup & Restore Database
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-6">
-                            <div className="flex-1 bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-between">
-                                <div>
-                                    <h4 className="font-bold text-green-800 flex items-center gap-2 mb-2">
-                                        <DatabaseBackup className="w-4 h-4" /> Export Backup
-                                    </h4>
-                                    <p className="text-xs text-green-700 mb-4">
-                                        Unduh seluruh data absensi, karyawan, dan pengaturan sistem dalam format JSON. Simpan file ini di tempat yang aman.
-                                    </p>
-                                </div>
-                                <Button onClick={handleBackup} className="bg-green-600 hover:bg-green-700 text-white font-bold w-full md:w-auto">
-                                    <DatabaseBackup className="w-4 h-4 mr-2" /> Download Backup Database
-                                </Button>
-                            </div>
-                            <div className="flex-1 bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-between">
-                                <div>
-                                    <h4 className="font-bold text-red-800 flex items-center gap-2 mb-2">
-                                        <UploadCloud className="w-4 h-4" /> Import Restore
-                                    </h4>
-                                    <p className="text-xs text-red-700 mb-4">
-                                        Kembalikan data dari file backup (.json). <strong className="text-red-600">Peringatan:</strong> Proses ini akan menghapus data yang ada saat ini dan menggantinya dengan data dari backup.
-                                    </p>
-                                </div>
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        accept=".json"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={handleRestore}
-                                    />
-                                    <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-100 font-bold w-full md:w-auto pointer-events-none relative z-0">
-                                        <UploadCloud className="w-4 h-4 mr-2" /> Restore dari File Backup
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
 
             </main>
         </div>

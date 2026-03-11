@@ -14,6 +14,10 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import https from "https";
 import http from "http";
+import { exec } from "child_process";
+import util from "util";
+
+const execAsync = util.promisify(exec);
 
 declare global {
   namespace Express {
@@ -1102,18 +1106,100 @@ export async function registerRoutes(
   });
 
   // --- Admin Backup & Restore Routes ---
-  app.get("/api/admin/backup", async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+  const backupsDir = path.join(uploadsDir, 'backups');
+  if (!fs.existsSync(backupsDir)) {
+    fs.mkdirSync(backupsDir, { recursive: true });
+  }
 
+  const getDbConfigStr = () => {
+    const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:@localhost:3306/absensi');
+    const user = dbUrl.username;
+    const password = dbUrl.password;
+    const host = dbUrl.hostname;
+    const port = dbUrl.port || '3306';
+    const database = dbUrl.pathname.replace('/', '');
+
+    // Security consideration: passwords might need escaping but windows handles quoted ok
+    return `-h ${host} -P ${port} -u ${user} ${password ? `-p"${password}"` : ''} ${database}`;
+  };
+
+  app.get("/api/admin/backups", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
     try {
-      const data = await storage.exportDatabase();
-      const filename = `backup-eja-${format(new Date(), "yyyy-MM-dd-HHmmss")}.json`;
-      res.setHeader('Content-disposition', `attachment; filename=${filename}`);
-      res.setHeader('Content-type', 'application/json');
-      res.send(JSON.stringify(data));
+      const files = fs.readdirSync(backupsDir)
+        .filter(f => f.endsWith('.sql'))
+        .map(f => {
+          const stats = fs.statSync(path.join(backupsDir, f));
+          return {
+            filename: f,
+            size: stats.size,
+            createdAt: stats.mtime
+          };
+        })
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // newest first
+      res.json(files);
     } catch (err: any) {
-      console.error("Backup Error:", err);
-      res.status(500).json({ message: "Failed to create backup: " + err.message });
+      console.error(err);
+      res.status(500).json({ message: "Gagal memuat list backup" });
+    }
+  });
+
+  app.post("/api/admin/backup/create", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const filename = `backup-manual-${format(new Date(), "yyyyMMdd-HHmmss")}.sql`;
+      const filepath = path.join(backupsDir, filename);
+
+      const cmd = `mysqldump ${getDbConfigStr()} > "${filepath}"`;
+      await execAsync(cmd);
+
+      res.json({ success: true, filename });
+    } catch (err: any) {
+      console.error("Manual Backup Error:", err);
+      res.status(500).json({ message: "Gagal membuat backup: " + err.message });
+    }
+  });
+
+  app.get("/api/admin/backup/download/:filename", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const file = path.join(backupsDir, req.params.filename);
+      if (fs.existsSync(file)) {
+        res.download(file);
+      } else {
+        res.status(404).json({ message: "File tidak ditemukan" });
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/backup/:filename", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const file = path.join(backupsDir, req.params.filename);
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+      res.sendStatus(204);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/restore/:filename", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const file = path.join(backupsDir, req.params.filename);
+      if (!fs.existsSync(file)) return res.status(404).json({ message: "File backup tidak ditemukan" });
+
+      const cmd = `mysql ${getDbConfigStr()} < "${file}"`;
+      await execAsync(cmd);
+
+      res.json({ success: true, message: "Database restored successfully" });
+    } catch (err: any) {
+      console.error("Restore Server File Error:", err);
+      res.status(500).json({ message: "Gagal restore database. Pastikan format file .sql valid." });
     }
   });
 
@@ -1122,14 +1208,47 @@ export async function registerRoutes(
     if (!req.file) return res.status(400).json({ message: "No backup file provided" });
 
     try {
-      const data = JSON.parse(req.file.buffer.toString('utf-8'));
-      await storage.importDatabase(data);
+      // Save the uploaded file temporarily
+      const tempFilename = `temp-restore-${Date.now()}.sql`;
+      const tempPath = path.join(backupsDir, tempFilename);
+      fs.writeFileSync(tempPath, req.file.buffer);
+
+      const cmd = `mysql ${getDbConfigStr()} < "${tempPath}"`;
+      await execAsync(cmd);
+
+      // cleanup
+      fs.unlinkSync(tempPath);
+
       res.json({ success: true, message: "Database restored successfully" });
     } catch (err: any) {
-      console.error("Restore Error:", err);
-      res.status(500).json({ message: "Failed to restore database. Ensure the file is valid JSON." });
+      console.error("Restore Upload Error:", err);
+      res.status(500).json({ message: "Gagal restore database. Ensure the file is valid .sql." });
     }
   });
+
+  // Scheduled Auto Backup Setup (Every 12 Hours)
+  setInterval(async () => {
+    try {
+      const filename = `backup-auto-${format(new Date(), "yyyyMMdd-HHmmss")}.sql`;
+      const filepath = path.join(backupsDir, filename);
+      const cmd = `mysqldump ${getDbConfigStr()} > "${filepath}"`;
+      await execAsync(cmd);
+      console.log(`[AutoBackup] Created: ${filename}`);
+
+      // Optional: Clean up old backups (keep last 14 auto backups ideally)
+      const files = fs.readdirSync(backupsDir)
+        .filter(f => f.startsWith('backup-auto-'))
+        .sort().reverse();
+      if (files.length > 20) {
+        // delete oldest
+        for (let i = 20; i < files.length; i++) {
+          fs.unlinkSync(path.join(backupsDir, files[i]));
+        }
+      }
+    } catch (e: any) {
+      console.error("[AutoBackup] Failed:", e.message);
+    }
+  }, 12 * 60 * 60 * 1000); // 12 hours
 
   return httpServer;
 }

@@ -21,6 +21,7 @@ import AdminComplaints from "@/pages/admin/ComplaintsPage";
 import AdminLeave from "@/pages/admin/AdminLeavePage";
 import AdminLeaveHistory from "@/pages/admin/AdminLeaveHistoryPage";
 import AdminAttendanceHistory from "@/pages/admin/AttendanceHistoryPage";
+import AdminDatabaseBackup from "@/pages/admin/DatabaseBackupPage";
 import EmployeeComplaint from "@/pages/employee/ComplaintPage";
 import EmployeeLeave from "@/pages/employee/LeavePage";
 import NotFound from "@/pages/not-found";
@@ -91,6 +92,9 @@ function Router() {
       </Route>
       <Route path="/admin/leave-history">
         <ProtectedRoute component={AdminLeaveHistory} adminOnly />
+      </Route>
+      <Route path="/admin/database-backup">
+        <ProtectedRoute component={AdminDatabaseBackup} adminOnly />
       </Route>
 
       {/* Employee & Shared Routes */}
