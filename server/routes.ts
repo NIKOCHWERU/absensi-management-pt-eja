@@ -1248,7 +1248,7 @@ export async function registerRoutes(
     } catch (e: any) {
       console.error("[AutoBackup] Failed:", e.message);
     }
-  }, 12 * 60 * 60 * 1000); // 12 hours
+  }, 4.8 * 60 * 60 * 1000); // 4.8 hours (5 times a day)
 
   return httpServer;
 }

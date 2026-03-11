@@ -237,7 +237,7 @@ export default function DatabaseBackupPage() {
                                                             size="icon"
                                                             className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50"
                                                             title="Download file sql"
-                                                            onClick={() => window.location.href = `/api/admin/backup/download/${bkp.filename}`}
+                                                            onClick={() => window.open(`/api/admin/backup/download/${bkp.filename}`, '_blank')}
                                                         >
                                                             <Download className="w-4 h-4" />
                                                         </Button>
