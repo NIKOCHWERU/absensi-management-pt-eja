@@ -153,6 +153,18 @@ export default function AttendanceHistoryPage() {
         return getPhotoUrl(url);
     };
 
+    const parsePermitInfo = (notes: string | null) => {
+        if (!notes) return { duration: 0, cleanNotes: null };
+        const match = notes.match(/\[DURATION:(\d+)\]/);
+        if (match) {
+            return {
+                duration: parseInt(match[1]),
+                cleanNotes: notes.replace(/\[DURATION:\d+\]\s*/, '')
+            };
+        }
+        return { duration: 0, cleanNotes: notes };
+    };
+
     const handlePrev = () => {
         if (reportType === "daily") setTargetDate(d => subDays(d, 1));
         else if (reportType === "weekly") setTargetDate(d => subDays(d, 7));
@@ -369,8 +381,9 @@ export default function AttendanceHistoryPage() {
                     photosHtml = '<span style="color:#94a3b8;font-style:italic;font-size:9px;">Tidak ada bukti foto</span>';
                 }
 
+                const { duration, cleanNotes } = parsePermitInfo(r.notes);
                 let extraNotes = '';
-                if (r.notes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${r.notes}</div>`;
+                if (cleanNotes) extraNotes += `<div style="margin-top:2px;color:#475569;font-size:9.5px;line-height:1.3;"><b>Cat:\n</b> ${cleanNotes}</div>`;
                 if (sts === 'late' && (r as any).lateReason) extraNotes += `<div style="margin-top:2px;color:#c2410c;font-size:9.5px;line-height:1.3;"><b>Alasan Telat:\n</b> ${(r as any).lateReason}</div>`;
 
                 const checkInLoc = r.checkInLocation || '-';
@@ -387,12 +400,12 @@ export default function AttendanceHistoryPage() {
                     IN : <span style="color:#16a34a;font-weight:bold;">${tIn}</span><br/>
                     BRK: <span style="color:#d97706;font-weight:bold;">${tBrkS}</span> - <span style="color:#2563eb;font-weight:bold;">${tBrkE}</span><br/>
                     OUT: <span style="color:#dc2626;font-weight:bold;">${tOut}</span><br/>
-                    ${(r as any).permitDuration > 0 ? `PERMIT: <span style="color:#7c3aed;font-weight:bold;">${(r as any).permitDuration} Jam</span><br/>` : ''}
+                    ${duration > 0 ? `PERMIT: <span style="color:#7c3aed;font-weight:bold;">${duration} Jam</span><br/>` : ''}
                     <div style="border-top:1px solid #eee; margin-top:4px; padding-top:4px; font-weight:bold;">
                       ${(() => {
                         if (r.checkIn && r.checkOut) {
                             const totalMinutes = Math.floor((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 60000);
-                            const permitMinutes = ((r as any).permitDuration || 0) * 60;
+                            const permitMinutes = (duration || 0) * 60;
                             const adjustedMinutes = Math.max(0, totalMinutes - permitMinutes);
                             const hCount = Math.floor(adjustedMinutes / 60);
                             const mCount = adjustedMinutes % 60;
@@ -731,19 +744,23 @@ export default function AttendanceHistoryPage() {
                                                                     <span className="font-bold text-red-600">{record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}</span>
                                                                 </div>
 
-                                                                {(record as any).permitDuration > 0 && (
-                                                                    <div className="flex justify-between w-32 pt-1 border-t border-gray-100 mt-1">
-                                                                        <span className="text-gray-500 font-bold">Izin:</span>
-                                                                        <span className="font-bold text-purple-600">{(record as any).permitDuration} Jam</span>
-                                                                    </div>
-                                                                )}
+                                                                {(() => {
+                                                                    const { duration } = parsePermitInfo(record.notes);
+                                                                    return duration > 0 && (
+                                                                        <div className="flex justify-between w-32 pt-1 border-t border-gray-100 mt-1">
+                                                                            <span className="text-gray-500 font-bold">Izin:</span>
+                                                                            <span className="font-bold text-purple-600">{duration} Jam</span>
+                                                                        </div>
+                                                                    );
+                                                                })()}
 
                                                                 <div className="mt-2 border-t border-gray-100 pt-1">
                                                                     <p className="text-[10px] font-bold text-gray-900">
                                                                         {(() => {
+                                                                            const { duration } = parsePermitInfo(record.notes);
                                                                             if (record.checkIn && record.checkOut) {
                                                                                 const totalMinutes = Math.floor((new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 60000);
-                                                                                const permitMinutes = ((record as any).permitDuration || 0) * 60;
+                                                                                const permitMinutes = (duration || 0) * 60;
                                                                                 const adjustedMinutes = Math.max(0, totalMinutes - permitMinutes);
 
                                                                                 const h = Math.floor(adjustedMinutes / 60);
@@ -800,12 +817,15 @@ export default function AttendanceHistoryPage() {
                                                                                     effectiveStatus === 'absent' ? 'Alpha' : effectiveStatus}
                                                             </span>
 
-                                                            {record.notes && (
-                                                                <p className="text-xs text-gray-600 whitespace-normal bg-gray-50 p-2 rounded border border-gray-100 w-full" style={{ wordBreak: 'break-word' }}>
-                                                                    <span className="font-semibold block mb-0.5">Catatan:</span>
-                                                                    {record.notes}
-                                                                </p>
-                                                            )}
+                                                            {(() => {
+                                                                const { duration, cleanNotes } = parsePermitInfo(record.notes);
+                                                                return cleanNotes && (
+                                                                    <p className="text-xs text-gray-600 whitespace-normal bg-gray-50 p-2 rounded border border-gray-100 w-full" style={{ wordBreak: 'break-word' }}>
+                                                                        <span className="font-semibold block mb-0.5">Catatan:</span>
+                                                                        {cleanNotes}
+                                                                    </p>
+                                                                );
+                                                            })()}
                                                             {(effectiveStatus === 'late' && (record as any).lateReason) && (
                                                                 <p className="text-xs text-orange-700 whitespace-normal bg-orange-50 p-2 rounded border border-orange-100 w-full" style={{ wordBreak: 'break-word' }}>
                                                                     <span className="font-semibold block mb-0.5">Alasan Telat:</span>

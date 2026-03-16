@@ -70,9 +70,6 @@ app.use((req, res, next) => {
     log("Running auto-migration for late_reason columns...");
     await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason TEXT");
     await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS late_reason_photo VARCHAR(255)");
-    await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS permit_exit_at TIMESTAMP NULL");
-    await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS permit_resume_at TIMESTAMP NULL");
-    await connection.query("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS permit_duration INT DEFAULT 0");
 
     log("Running auto-migration for leave_requests table...");
     await connection.query(`

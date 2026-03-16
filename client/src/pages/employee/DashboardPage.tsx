@@ -138,25 +138,16 @@ export default function EmployeeDashboard() {
     function checkIsSuspicious(coords: GeolocationCoordinates): { suspicious: boolean; reasons: string[] } {
         const reasons: string[] = [];
 
-        // Suspicious indicator: Accuracy is a perfect integer (real GPS rarely is)
-        if (coords.accuracy !== null && Number.isInteger(coords.accuracy) && coords.accuracy < 50) {
-            reasons.push(`Akurasi sempurna (${coords.accuracy}m) - biasanya dari aplikasi GPS palsu`);
-        }
-
-        // Suspicious indicator: accuracy is unrealistically precise (< 1m is almost impossible for regular GPS)
-        if (coords.accuracy !== null && coords.accuracy < 1.0) {
+        // Suspicious indicator: accuracy is unrealistically precise (< 0.5m is almost impossible for regular consumer GPS)
+        // Relaxed from 1.0 to 0.5
+        if (coords.accuracy !== null && coords.accuracy < 0.5) {
             reasons.push(`Akurasi terlalu tinggi (${coords.accuracy}m) - tidak wajar untuk GPS biasa`);
         }
 
-        // Suspicious indicator: altitude is null but accuracy is very high
-        if (coords.altitude === null && coords.accuracy !== null && coords.accuracy < 10) {
-            reasons.push(`Tidak ada data ketinggian meski akurasi tinggi - kemungkinan GPS simulasi`);
-        }
-
-        // Suspicious indicator: speed is exactly 0.0 but coordinates changed (always report 0 is a spoofing sign)
-        // We can't check previous coords here, but we flag exact 0 speed
-        if (coords.speed !== null && coords.speed === 0 && coords.accuracy !== null && coords.accuracy < 5) {
-            reasons.push(`Kecepatan 0 tepat dengan akurasi sangat tinggi - ciri GPS palsu`);
+        // Suspicious indicator: speed is exactly 0.0 with high accuracy (sometimes spoofers forget to simulate speed)
+        // Only trigger if accuracy is extremely high (< 1m) to avoid false positives on stationary devices
+        if (coords.speed !== null && coords.speed === 0 && coords.accuracy !== null && coords.accuracy < 1) {
+            reasons.push(`Sinyal statis sempurna - kemungkinan stimulasi lokasi`);
         }
 
         return { suspicious: reasons.length > 0, reasons };

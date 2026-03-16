@@ -328,11 +328,9 @@ export async function registerRoutes(
       // Build update payload
       const updatePayload: any = {
         status: type,
-        notes: contextNote,
+        notes: `[DURATION:${permitDuration || 0}] ${contextNote}`,
         checkOut: now,
         checkOutPhoto: photoFileId,
-        permitExitAt: now,
-        permitDuration: permitDuration || 0,
         checkInLocation: location || activeSession.checkInLocation
       };
 
@@ -355,13 +353,12 @@ export async function registerRoutes(
       userId,
       date: new Date(today),
       status: type as any,
-      notes: contextNote,
+      notes: `[DURATION:${permitDuration || 0}] ${contextNote}`,
       checkInPhoto: photoFileId,
       checkInLocation: location,
       checkIn: now,
       checkOut: now, // immediately closed — no actual work done
       sessionNumber: allSessions.length + 1,
-      permitDuration: permitDuration || 0,
     });
 
     res.json(attendance);
