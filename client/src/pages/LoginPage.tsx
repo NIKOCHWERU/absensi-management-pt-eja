@@ -22,14 +22,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { isInstallable, installApp } = usePWAInstall();
 
-  if (user) {
-    return <Redirect to="/" />;
-  }
-
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: { username: "", password: "" },
   });
+
+  if (user) {
+    return <Redirect to="/" />;
+  }
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     try {
