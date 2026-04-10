@@ -17,15 +17,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DateRange } from "react-day-picker";
 import { cn, formatLongDate } from "@/lib/utils";
 
 export default function AttendanceSummaryPage() {
     const [, setLocation] = useLocation();
     // State for selected period (e.g., Feb 2026 means Jan 26 - Feb 25)
     const [targetDate, setTargetDate] = useState(new Date());
+    const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+    const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [logoBase64, setLogoBase64] = useState("");
 
     useEffect(() => {
@@ -52,24 +51,20 @@ export default function AttendanceSummaryPage() {
     });
 
     const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: undefined,
-        to: undefined,
-    });
 
     // Calculate Period Range
     let startDate: Date = startOfDay(new Date());
     let endDate: Date = endOfDay(new Date());
 
-    if (reportType === "custom" && dateRange?.from) {
-        startDate = startOfDay(dateRange.from);
-        endDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
-    } else if (reportType === "daily") {
+    if (reportType === "daily") {
         startDate = startOfDay(targetDate);
         endDate = endOfDay(targetDate);
     } else if (reportType === "weekly") {
         startDate = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
         endDate = endOfWeek(targetDate, { weekStartsOn: 1 });
+    } else if (reportType === "custom") {
+        startDate = startOfDay(new Date(customStartDate));
+        endDate = endOfDay(new Date(customEndDate));
     } else {
         // Default: 26th of previous month to 25th of current month
         startDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 26);
@@ -218,122 +213,52 @@ export default function AttendanceSummaryPage() {
         let tableHeader: string = "";
         let tableRows: string = "";
 
-        if (reportType === 'monthly' || reportType === 'custom') {
-            tableHeader = `
-                <tr>
-                    <th class="c" style="width: 40px;">No</th>
-                    <th>Nama Karyawan</th>
-                    <th class="c" style="width: 80px;">Hadir</th>
-                    <th class="c" style="width: 80px;">Telat</th>
-                    <th class="c" style="width: 80px;">Sakit</th>
-                    <th class="c" style="width: 80px;">Izin</th>
-                    <th class="c" style="width: 80px;">Alpha</th>
-                    <th class="c" style="width: 100px;">Persentase</th>
-                </tr>
-            `;
-            tableRows = sortedEmployees.map((emp, index) => `
-                <tr>
-                    <td class="col-no">${index + 1}</td>
-                    <td>
-                        <div style="font-weight: 700; color: #1e293b; font-size: 13px;">${emp.fullName}</div>
-                        <div style="font-size: 10px; color: #64748b; font-family: monospace;">NIK: ${emp.nik || '-'}</div>
-                    </td>
-                    <td class="c"><span class="st-hadir">${emp.stats.present}</span></td>
-                    <td class="c"><span class="st-telat">${emp.stats.late}</span></td>
-                    <td class="c"><span class="st-sakit">${emp.stats.sick}</span></td>
-                    <td class="c"><span class="st-izin">${emp.stats.permission}</span></td>
-                    <td class="c"><span class="st-alpha">${emp.stats.alpha}</span></td>
-                    <td class="c"><b style="font-size: 13px;">${emp.stats.percentage}%</b></td>
-                </tr>
-            `).join('');
-        } else {
-            // Weekly, Daily, Custom: Show detailed records
-            tableHeader = `
-                <tr>
-                    <th class="c" style="width: 30px;">No</th>
-                    <th>Tanggal</th>
-                    <th>Nama Karyawan</th>
-                    <th class="c">Masuk</th>
-                    <th class="c">Istirahat</th>
-                    <th class="c">Selesai</th>
-                    <th class="c">Pulang</th>
-                    <th>Jam Kerja</th>
-                    <th class="c">Total Istirahat</th>
-                    <th class="c">Status</th>
-                    <th>Keterangan</th>
-                </tr>
-            `;
+        const grandTotals = sortedEmployees.reduce((acc, emp) => ({
+            present: acc.present + emp.stats.present,
+            late: acc.late + emp.stats.late,
+            sick: acc.sick + emp.stats.sick,
+            permission: acc.permission + emp.stats.permission,
+            alpha: acc.alpha + emp.stats.alpha,
+        }), { present: 0, late: 0, sick: 0, permission: 0, alpha: 0 });
 
-            const calculateHours = (start?: Date | string | null, end?: Date | string | null) => {
-                if (!start || !end) return 0;
-                return Math.floor(Math.abs(new Date(end).getTime() - new Date(start).getTime()) / 60000);
-            };
+        tableHeader = `
+            <tr>
+                <th class="c" style="width: 40px;">No</th>
+                <th>Nama Karyawan</th>
+                <th class="c" style="width: 80px;">Hadir</th>
+                <th class="c" style="width: 80px;">Telat</th>
+                <th class="c" style="width: 80px;">Sakit</th>
+                <th class="c" style="width: 80px;">Izin</th>
+                <th class="c" style="width: 80px;">Alpha</th>
+                <th class="c" style="width: 100px;">Persentase</th>
+            </tr>
+        `;
 
-            const formatDur = (minutes: number) => {
-                if (minutes <= 0) return "-";
-                const h = Math.floor(minutes / 60);
-                const m = minutes % 60;
-                return `${h}j ${m}m`;
-            };
-
-            const allRecords: any[] = [];
-            sortedEmployees.forEach(emp => {
-                const records = getAttendanceForPeriod(emp.id);
-                records.forEach(r => {
-                    allRecords.push({ ...r, employeeName: emp.fullName });
-                });
-            });
-
-            // Sort by date then name
-            allRecords.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.employeeName.localeCompare(b.employeeName));
-
-            tableRows = allRecords.map((row, index) => {
-                let workMins = calculateHours(row.checkIn, row.checkOut);
-                if (row.permitExitAt && row.permitResumeAt) {
-                    const permitMins = calculateHours(row.permitExitAt, row.permitResumeAt);
-                    workMins = Math.max(0, workMins - permitMins);
-                }
-                const breakMins = calculateHours(row.breakStart, row.breakEnd);
-                const netMins = Math.max(0, workMins - breakMins);
-
-                const inTime = row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-";
-                const brkStart = row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-";
-                const brkEnd = row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-";
-                const outTime = row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-";
-
-                let statusLabel = row.status === 'present' ? 'Hadir' :
-                    row.status === 'late' ? 'Telat' :
-                        row.status === 'sick' ? 'Sakit' :
-                            row.status === 'permission' ? 'Izin' :
-                                row.status === 'absent' ? 'Alpha' : row.status;
-                
-                if ((row as any).sessionNumber > 1) {
-                    statusLabel += ` (Sesi ${(row as any).sessionNumber})`;
-                }
-                
-                const statusClass = row.status === 'present' ? 'st-hadir' :
-                    row.status === 'late' ? 'st-telat' :
-                        row.status === 'sick' ? 'st-sakit' :
-                            row.status === 'permission' ? 'st-izin' :
-                                row.status === 'absent' ? 'st-alpha' : '';
-
-                return `
-                    <tr>
-                        <td class="col-no">${index + 1}</td>
-                        <td class="col-date">${formatLongDate(row.date)}</td>
-                        <td class="col-name">${row.employeeName}</td>
-                        <td class="col-time ${inTime === '-' ? 't-dash' : 't-in'}">${inTime}</td>
-                        <td class="col-time ${brkStart === '-' ? 't-dash' : 't-brk'}">${brkStart}</td>
-                        <td class="col-time ${brkEnd === '-' ? 't-dash' : 't-brk'}">${brkEnd}</td>
-                        <td class="col-time ${outTime === '-' ? 't-dash' : 't-out'}">${outTime}</td>
-                        <td class="col-work">${formatDur(netMins)}</td>
-                        <td class="col-brk">${formatDur(breakMins)}</td>
-                        <td class="col-stat"><span class="${statusClass}">${statusLabel}</span></td>
-                        <td class="col-note">${row.notes || "-"}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        tableRows = sortedEmployees.map((emp, index) => `
+            <tr>
+                <td class="col-no">${index + 1}</td>
+                <td>
+                    <div style="font-weight: 700; color: #1e293b; font-size: 13px;">${emp.fullName}</div>
+                    <div style="font-size: 10px; color: #64748b; font-family: monospace;">NIK: ${emp.nik || '-'}</div>
+                </td>
+                <td class="c"><span class="st-hadir">${emp.stats.present}</span></td>
+                <td class="c"><span class="st-telat">${emp.stats.late}</span></td>
+                <td class="c"><span class="st-sakit">${emp.stats.sick}</span></td>
+                <td class="c"><span class="st-izin">${emp.stats.permission}</span></td>
+                <td class="c"><span class="st-alpha">${emp.stats.alpha}</span></td>
+                <td class="c"><b style="font-size: 13px;">${emp.stats.percentage}%</b></td>
+            </tr>
+        `).join('') + `
+            <tr style="background: #f1f5f9; font-weight: 800; border-top: 2px solid #1e293b;">
+                <td colspan="2" style="text-align: right; padding-right: 20px; text-transform: uppercase; letter-spacing: 1px;">Grand Total</td>
+                <td class="c"><span class="st-hadir">${grandTotals.present}</span></td>
+                <td class="c"><span class="st-telat">${grandTotals.late}</span></td>
+                <td class="c"><span class="st-sakit">${grandTotals.sick}</span></td>
+                <td class="c"><span class="st-izin">${grandTotals.permission}</span></td>
+                <td class="c"><span class="st-alpha">${grandTotals.alpha}</span></td>
+                <td class="c">&mdash;</td>
+            </tr>
+        `;
 
         const html = `<!DOCTYPE html>
 <html>
@@ -475,7 +400,7 @@ export default function AttendanceSummaryPage() {
                     <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-xl font-bold text-gray-800">Absensi Management PT ELOK JAYA ABADHI</h1>
+                    <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management PT ELOK JAYA ABADHI</h1>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative w-64">
@@ -487,82 +412,59 @@ export default function AttendanceSummaryPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-2 bg-white border rounded-md p-1">
-                        <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
-                            <SelectTrigger className="w-[120px] h-8 border-none bg-transparent">
-                                <SelectValue placeholder="Tipe Laporan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="daily">Harian</SelectItem>
-                                <SelectItem value="weekly">Mingguan</SelectItem>
-                                <SelectItem value="monthly">Bulanan</SelectItem>
-                                <SelectItem value="custom">Custom</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {reportType !== "custom" && (
-                            <>
-                                <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-sm font-medium min-w-[120px] text-center">
-                                    {reportType === 'daily' ? formatLongDate(targetDate) :
-                                        reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
-                                            format(targetDate, "MMMM yyyy", { locale: id })}
-                                </span>
-                                <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </>
-                        )}
-                        {reportType === "custom" && (
-                            <>
-                                <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            id="date"
-                                            variant={"ghost"}
-                                            className={cn(
-                                                "h-8 justify-start text-left font-medium",
-                                                !dateRange && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {dateRange?.from ? (
-                                                dateRange.to ? (
-                                                    <>
-                                                        {format(dateRange.from, "d MMMM", { locale: id })} -{" "}
-                                                        {format(dateRange.to, "d MMMM yyyy", { locale: id })}
-                                                    </>
-                                                ) : (
-                                                    formatLongDate(dateRange.from)
-                                                )
-                                            ) : (
-                                                <span>Pilih Tanggal</span>
-                                            )}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="end">
-                                        <Calendar
-                                            initialFocus
-                                            mode="range"
-                                            defaultMonth={dateRange?.from}
-                                            selected={dateRange}
-                                            onSelect={setDateRange}
-                                            numberOfMonths={2}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </>
-                        )}
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-2 bg-white border rounded-md p-1 shadow-sm">
+                            <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>
+                                <SelectTrigger className="w-[120px] h-8 border-none bg-transparent focus:ring-0">
+                                    <SelectValue placeholder="Tipe Laporan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="daily">Harian</SelectItem>
+                                    <SelectItem value="weekly">Mingguan</SelectItem>
+                                    <SelectItem value="monthly">Bulanan</SelectItem>
+                                    <SelectItem value="custom">Kustom Pilihan</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
+                            {reportType === 'custom' ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type="date"
+                                        className="h-8 text-xs py-0 px-2 min-w-[130px] border-none focus-visible:ring-0"
+                                        value={customStartDate}
+                                        onChange={e => setCustomStartDate(e.target.value)}
+                                    />
+                                    <span className="text-gray-400 text-xs">-</span>
+                                    <Input
+                                        type="date"
+                                        className="h-8 text-xs py-0 px-2 min-w-[130px] border-none focus-visible:ring-0"
+                                        value={customEndDate}
+                                        onChange={e => setCustomEndDate(e.target.value)}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8 hover:bg-gray-100">
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-sm font-medium min-w-[120px] text-center text-gray-700">
+                                        {reportType === 'daily' ? formatLongDate(targetDate) :
+                                            reportType === 'weekly' ? `${format(startDate, "d MMMM")} - ${format(endDate, "d MMMM yyyy", { locale: id })}` :
+                                                format(targetDate, "MMMM yyyy", { locale: id })}
+                                    </span>
+                                    <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8 hover:bg-gray-100">
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </header>
 
             <main className="p-8 flex-1 overflow-auto">
                 <Card className="border-none shadow-sm mb-6">
-                    <CardContent className="p-4 flex items-center justify-between bg-green-50/50">
+                    <CardContent className="p-4 flex items-center justify-between bg-white">
                         <div className="flex gap-6 text-sm">
                             <div>
                                 <span className="text-gray-500">Periode:</span>
@@ -579,7 +481,7 @@ export default function AttendanceSummaryPage() {
                             variant="outline"
                             size="sm"
                             onClick={handleExport}
-                            className="gap-2 text-green-600 border-green-200 bg-white hover:bg-green-50"
+                            className="bg-green-600 text-white hover:bg-green-700 hover:text-white border-none shadow-sm gap-2"
                         >
                             <FileDown className="h-4 w-4" /> Export PDF
                         </Button>
