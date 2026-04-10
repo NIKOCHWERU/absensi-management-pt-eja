@@ -18,6 +18,7 @@ import { useState } from "react";
 import { AttendanceCalendar } from "@/components/AttendanceCalendar";
 import { addMonths, subMonths, format, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addDays, getWeek, getYear, addWeeks, subWeeks } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import {
     Table,
     TableBody,
@@ -437,7 +438,7 @@ export default function AdminEmployeeList() {
                                                     {selectedDate && (
                                                         <div className="mt-8 space-y-6">
                                                             <h4 className="font-bold text-gray-800 border-b pb-2">
-                                                                Detail {format(selectedDate, "EEEE, d MMM yyyy", { locale: id })}
+                                                                Detail {formatLongDate(selectedDate)}
                                                             </h4>
 
                                                             {(() => {
@@ -614,7 +615,7 @@ export default function AdminEmployeeList() {
                                                                     <tbody>
                                                                         {employeeAttendance?.slice(0, 5).map(att => (
                                                                             <tr key={att.id} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedDate(new Date(att.date))}>
-                                                                                <td className="px-4 py-2">{format(new Date(att.date), "EEEE, d MMM yyyy", { locale: id })}</td>
+                                                                                <td className="px-4 py-2">{formatLongDate(att.date)}</td>
                                                                                 <td className="px-4 py-2 font-mono text-green-600">
                                                                                     {att.checkIn ? new Date(att.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                                                                                 </td>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { format, subMonths, addMonths, isSameMonth, setDate, isAfter, isBefore, isEqual, startOfWeek, endOfWeek, startOfDay, endOfDay, subDays, addDays } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -275,11 +276,11 @@ export default function RecapPage() {
     const handleExport = async () => {
         let periodStr = '';
         if (reportType === 'daily') {
-            periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+            periodStr = formatLongDate(targetDate).toUpperCase();
         } else if (reportType === 'weekly') {
-            periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else if (reportType === 'custom') {
-            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else {
             periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
         }
@@ -456,7 +457,7 @@ export default function RecapPage() {
 
             return `<tr>
           <td class="col-no">${isSameDayAndUser ? '<span style="color:#cbd5e1;">↳</span>' : (index + 1)}</td>
-          <td class="col-date">${isSameDayAndUser ? '' : format(new Date(row.date), 'dd/MM/yyyy')}</td>
+          <td class="col-date">${isSameDayAndUser ? '' : formatLongDate(row.date)}</td>
           <td class="col-name">${isSameDayAndUser ? '' : (getUserName(row.userId) || '-')}</td>
           <td class="col-time ${inTime === '-' ? 't-dash' : 't-in'}">${inTime}</td>
           <td class="col-time ${brkTime === '-' ? 't-dash' : 't-brk'}">${brkTime}</td>
@@ -499,7 +500,7 @@ export default function RecapPage() {
                         const hasOut = dayRecords.some(r => r.checkOut);
                         const isComplete = hasIn && hasBrkS && hasBrkE && hasOut;
                         const isNoBreakComplete = hasIn && !hasBrkS && !hasBrkE && hasOut;
-                        const dateStr = format(new Date(day), "dd/MM/yyyy");
+                        const dateStr = formatLongDate(day);
 
                         const statuses = dayRecords.map(r => r.status).filter(Boolean);
                         let specialStatus = "";
@@ -545,7 +546,7 @@ export default function RecapPage() {
               <div class="report-meta">
                 <h2>Rekapitulasi Total Jam Kerja</h2>
                 <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
-                <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+                <p class="sub">Periode: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}</p>
                 <p class="sub" style="font-size:9.5px;color:#ef4444;margin-top:6px;max-width:400px;margin-left:auto;margin-right:auto;">
                   *Hanya menghitung jam kerja jika karyawan melakukan minimal: absen masuk & absen pulang (termasuk tanpa istirahat) dalam 1 hari.
                 </p>
@@ -660,8 +661,8 @@ export default function RecapPage() {
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-sm font-medium min-w-[120px] text-center">
-                                {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                    reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
+                                {reportType === 'daily' ? formatLongDate(targetDate) :
+                                    reportType === 'weekly' ? `${format(startDate, "d MMMM")} - ${format(endDate, "d MMMM yyyy", { locale: id })}` :
                                         format(targetDate, "MMMM yyyy", { locale: id })}
                             </span>
                             <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
@@ -678,7 +679,7 @@ export default function RecapPage() {
                         <div className="space-y-1">
                             <CardTitle>Laporan Bulanan</CardTitle>
                             <p className="text-sm text-gray-500">
-                                Periode: {format(startDate, "EEEE, d MMM yyyy", { locale: id })} - {format(endDate, "EEEE, d MMM yyyy", { locale: id })}
+                                Periode: {formatLongDate(startDate)} - {formatLongDate(endDate)}
                             </p>
                         </div>
                         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -740,7 +741,7 @@ export default function RecapPage() {
                                                     {isSameDayAndUser ? (
                                                         <div className="absolute left-8 top-0 h-full w-px bg-gray-200"></div> /* Connector */
                                                     ) : (
-                                                        format(new Date(row.date), "dd/MM/yyyy")
+                                                        formatLongDate(row.date)
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-700">

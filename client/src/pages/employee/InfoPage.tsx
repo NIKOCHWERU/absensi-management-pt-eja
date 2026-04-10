@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Newspaper, Calendar, Download, Share2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
@@ -121,7 +122,7 @@ export default function InfoPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {safeFormat(ann.createdAt, "dd MMM yyyy")}
+                      {formatLongDate(ann.createdAt)}
                     </span>
                     <span className="text-[10px] text-primary font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
                       Baca Selengkapnya <ExternalLink className="w-3 h-3" />
@@ -163,7 +164,7 @@ export default function InfoPage() {
             )}
             <span className="text-[10px] text-gray-400 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {safeFormat(selectedAnnouncement?.createdAt, "EEEE, dd MMMM yyyy • HH:mm")}
+              {selectedAnnouncement?.createdAt && `${formatLongDate(selectedAnnouncement.createdAt)} • ${format(new Date(selectedAnnouncement.createdAt), "HH:mm")}`}
             </span>
             <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
               {selectedAnnouncement?.content}

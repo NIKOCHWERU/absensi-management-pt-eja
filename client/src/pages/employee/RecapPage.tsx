@@ -5,6 +5,7 @@ import { AttendanceCalendar } from "@/components/AttendanceCalendar";
 import { useState } from "react";
 import { format, subMonths, addMonths, startOfWeek, endOfWeek, isWithinInterval, subWeeks, addWeeks, subDays, addDays } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { Loader2, Calendar, Clock, MapPin, Coffee, LogOut, X, LayoutGrid, Calendar as CalendarIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -141,7 +142,7 @@ export default function RecapPage() {
                 {format(targetDate, 'EEEE', { locale: id })}
               </div>
               <div className="text-lg font-black text-foreground">
-                {format(targetDate, 'dd MMMM yyyy', { locale: id })}
+                {formatLongDate(targetDate)}
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={handleNext} className="h-10 w-10 rounded-xl">
@@ -187,7 +188,7 @@ export default function RecapPage() {
               >
                 <div>
                   <div className="font-semibold text-sm flex items-center gap-2">
-                    {format(new Date(record.date), 'EEEE, dd MMM yyyy', { locale: id })}
+                    {formatLongDate(record.date)}
                     {(record as any).sessionNumber && (record as any).sessionNumber > 1 && (
                       <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold">Sesi {(record as any).sessionNumber}</span>
                     )}
@@ -246,7 +247,7 @@ export default function RecapPage() {
             <div className="space-y-4 py-4">
               <div className="text-center pb-2 border-b">
                 <p className="font-bold text-lg text-primary">
-                  {format(new Date(selectedRecord.date), 'EEEE, dd MMM yyyy', { locale: id })}
+                  {formatLongDate(selectedRecord.date)}
                 </p>
                 <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
                   selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :

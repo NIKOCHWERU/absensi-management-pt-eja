@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 
 export function DigitalClock() {
   const [time, setTime] = useState(new Date());
@@ -21,7 +22,7 @@ export function DigitalClock() {
         })}
       </div>
       <div className="text-muted-foreground mt-2 font-medium">
-        {format(time, "EEEE, d MMM yyyy", { locale: id })}
+        {formatLongDate(time)}
       </div>
     </div>
   );

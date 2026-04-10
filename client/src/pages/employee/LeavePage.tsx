@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays, isBefore, startOfDay, addDays } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { useState } from "react";
 import { Loader2, Calendar as CalendarIcon, History, Send, Info } from "lucide-react";
 import { api } from "@shared/routes";
@@ -241,7 +242,7 @@ export default function LeavePage() {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-sm font-bold text-gray-800">
-                                                    {format(new Date(req.startDate), "d MMM")} - {format(new Date(req.endDate), "d MMM yyyy")}
+                                                    {formatLongDate(req.startDate)} - {formatLongDate(req.endDate)}
                                                 </p>
                                                 <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{req.reason}</p>
                                             </div>

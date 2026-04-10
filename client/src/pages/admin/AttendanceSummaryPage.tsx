@@ -20,7 +20,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
+import { cn, formatLongDate } from "@/lib/utils";
 
 export default function AttendanceSummaryPage() {
     const [, setLocation] = useLocation();
@@ -189,13 +189,12 @@ export default function AttendanceSummaryPage() {
     };
 
     const handleExport = async () => {
-        let periodStr = '';
         if (reportType === 'daily') {
-            periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+            periodStr = formatLongDate(targetDate).toUpperCase();
         } else if (reportType === 'weekly') {
-            periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else if (reportType === 'custom') {
-            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else {
             periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
         }
@@ -216,32 +215,32 @@ export default function AttendanceSummaryPage() {
         let tableHeader: string = "";
         let tableRows: string = "";
 
-        if (reportType === 'monthly') {
+        if (reportType === 'monthly' || reportType === 'custom') {
             tableHeader = `
                 <tr>
                     <th class="c" style="width: 40px;">No</th>
                     <th>Nama Karyawan</th>
-                    <th class="c" style="width: 60px;">Hadir</th>
-                    <th class="c" style="width: 60px;">Telat</th>
-                    <th class="c" style="width: 60px;">Sakit</th>
-                    <th class="c" style="width: 60px;">Izin</th>
-                    <th class="c" style="width: 60px;">Alpha</th>
-                    <th class="c" style="width: 80px;">Persentase</th>
+                    <th class="c" style="width: 80px;">Hadir</th>
+                    <th class="c" style="width: 80px;">Telat</th>
+                    <th class="c" style="width: 80px;">Sakit</th>
+                    <th class="c" style="width: 80px;">Izin</th>
+                    <th class="c" style="width: 80px;">Alpha</th>
+                    <th class="c" style="width: 100px;">Persentase</th>
                 </tr>
             `;
             tableRows = sortedEmployees.map((emp, index) => `
                 <tr>
                     <td class="col-no">${index + 1}</td>
                     <td>
-                        <div style="font-weight: 600; color: #1d4ed8;">${emp.fullName}</div>
-                        <div style="font-size: 10px; color: #64748b;">${emp.nik || '-'}</div>
+                        <div style="font-weight: 700; color: #1e293b; font-size: 13px;">${emp.fullName}</div>
+                        <div style="font-size: 10px; color: #64748b; font-family: monospace;">NIK: ${emp.nik || '-'}</div>
                     </td>
-                    <td class="c st-hadir">${emp.stats.present}</td>
-                    <td class="c st-telat">${emp.stats.late}</td>
-                    <td class="c st-sakit">${emp.stats.sick}</td>
-                    <td class="c st-izin">${emp.stats.permission}</td>
-                    <td class="c st-alpha">${emp.stats.alpha}</td>
-                    <td class="c"><b>${emp.stats.percentage}%</b></td>
+                    <td class="c"><span class="st-hadir">${emp.stats.present}</span></td>
+                    <td class="c"><span class="st-telat">${emp.stats.late}</span></td>
+                    <td class="c"><span class="st-sakit">${emp.stats.sick}</span></td>
+                    <td class="c"><span class="st-izin">${emp.stats.permission}</span></td>
+                    <td class="c"><span class="st-alpha">${emp.stats.alpha}</span></td>
+                    <td class="c"><b style="font-size: 13px;">${emp.stats.percentage}%</b></td>
                 </tr>
             `).join('');
         } else {
@@ -318,7 +317,7 @@ export default function AttendanceSummaryPage() {
                 return `
                     <tr>
                         <td class="col-no">${index + 1}</td>
-                        <td class="col-date">${format(new Date(row.date), "dd/MM/yyyy")}</td>
+                        <td class="col-date">${formatLongDate(row.date)}</td>
                         <td class="col-name">${row.employeeName}</td>
                         <td class="col-time ${inTime === '-' ? 't-dash' : 't-in'}">${inTime}</td>
                         <td class="col-time ${brkStart === '-' ? 't-dash' : 't-brk'}">${brkStart}</td>
@@ -413,9 +412,9 @@ export default function AttendanceSummaryPage() {
   <hr class="hr-thin" />
 
   <div class="report-meta">
-    <h2>Laporan Summary Absensi</h2>
-    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
-    <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+    <h2>Laporan Ringkasan Absensi PT EJA</h2>
+    <p class="sub">Metode: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
+    <p class="sub">Rentang Waktu: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}</p>
   </div>
 
   <table>
@@ -504,7 +503,7 @@ export default function AttendanceSummaryPage() {
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
                                 <span className="text-sm font-medium min-w-[120px] text-center">
-                                    {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                    {reportType === 'daily' ? formatLongDate(targetDate) :
                                         reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
                                             format(targetDate, "MMMM yyyy", { locale: id })}
                                 </span>
@@ -530,11 +529,11 @@ export default function AttendanceSummaryPage() {
                                             {dateRange?.from ? (
                                                 dateRange.to ? (
                                                     <>
-                                                        {format(dateRange.from, "d MMM", { locale: id })} -{" "}
-                                                        {format(dateRange.to, "d MMM yyyy", { locale: id })}
+                                                        {format(dateRange.from, "d MMMM", { locale: id })} -{" "}
+                                                        {format(dateRange.to, "d MMMM yyyy", { locale: id })}
                                                     </>
                                                 ) : (
-                                                    format(dateRange.from, "d MMM yyyy", { locale: id })
+                                                    formatLongDate(dateRange.from)
                                                 )
                                             ) : (
                                                 <span>Pilih Tanggal</span>
@@ -565,7 +564,7 @@ export default function AttendanceSummaryPage() {
                             <div>
                                 <span className="text-gray-500">Periode:</span>
                                 <span className="ml-2 font-semibold text-gray-700">
-                                    {format(startDate, "EEEE, d MMM yyyy", { locale: id })} - {format(endDate, "EEEE, d MMM yyyy", { locale: id })}
+                                    {formatLongDate(startDate)} - {formatLongDate(endDate)}
                                 </span>
                             </div>
                             <div>

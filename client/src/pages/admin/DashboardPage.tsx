@@ -24,6 +24,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { format, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
+import { cn, formatLongDate } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { api } from "@shared/routes";
@@ -384,7 +385,7 @@ export default function AdminDashboard() {
                             </DialogContent>
                         </Dialog>
                         <div className="text-sm text-gray-500 font-medium capitalize hidden md:block">
-                            {format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}
+                            {formatLongDate(new Date())}
                         </div>
                     </div>
                 </header>
@@ -710,7 +711,7 @@ export default function AdminDashboard() {
                                         {recentActivities.map((record) => (
                                             <tr key={record.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                                                 <td className="px-4 py-3 font-medium text-gray-900">
-                                                    {format(new Date(record.date), 'EEEE, d MMM yyyy', { locale: id })}
+                                                    {formatLongDate(record.date)}
                                                 </td>
                                                 <td className="px-4 py-3 font-mono text-gray-600">{getUserNik(record.userId)}</td>
                                                 <td className="px-4 py-3 text-green-600 font-mono">

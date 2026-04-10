@@ -11,6 +11,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Plus, Send, Image, Clock, CheckCircle, AlertCircle, X } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 
@@ -179,7 +180,7 @@ export default function ComplaintPage() {
                                 </div>
                                 <p className="text-xs text-gray-500 line-clamp-2 mb-2">{c.description}</p>
                                 <p className="text-[10px] text-gray-400">
-                                    {c.createdAt && format(new Date(c.createdAt), "dd MMM yyyy, HH:mm", { locale: idLocale })}
+                                    {c.createdAt && `${formatLongDate(c.createdAt)}, ${format(new Date(c.createdAt), "HH:mm")}`}
                                 </p>
                             </motion.div>
                         ))}
@@ -290,7 +291,7 @@ export default function ComplaintPage() {
                             {selectedComplaint && getStatusBadge(selectedComplaint.status)}
                             <span className="text-[10px] text-gray-400">
                                 {selectedComplaint?.createdAt &&
-                                    format(new Date(selectedComplaint.createdAt), "dd MMM yyyy, HH:mm", { locale: idLocale })}
+                                    `${formatLongDate(selectedComplaint.createdAt)}, ${format(new Date(selectedComplaint.createdAt), "HH:mm")}`}
                             </span>
                         </div>
                         <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedComplaint?.description}</p>

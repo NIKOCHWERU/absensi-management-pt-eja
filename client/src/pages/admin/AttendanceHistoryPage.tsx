@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays, subDays, startOfWeek, endOfWeek, startOfDay, endOfDay, subMonths, addMonths, isAfter, isBefore, isEqual } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -178,13 +179,12 @@ export default function AttendanceHistoryPage() {
     };
 
     const handleExport = async () => {
-        let periodStr = '';
         if (reportType === 'daily') {
-            periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+            periodStr = formatLongDate(targetDate).toUpperCase();
         } else if (reportType === 'weekly') {
-            periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else if (reportType === 'custom') {
-            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+            periodStr = `${format(startDate, "d MMMM yyyy", { locale: id })} - ${format(endDate, "d MMMM yyyy", { locale: id })}`.toUpperCase();
         } else {
             periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
         }
@@ -309,7 +309,7 @@ export default function AttendanceHistoryPage() {
   <div class="report-meta">
     <h2>Laporan Riwayat & Foto Absensi</h2>
     <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
-    <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+    <p class="sub">Periode: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}</p>
   </div>
   
   <table>
@@ -335,7 +335,7 @@ export default function AttendanceHistoryPage() {
                 const r = filteredRecords[i];
                 const emp = getEmployee(r.userId);
                 const currentName = emp?.fullName || '-';
-                const currentDateStr = format(new Date(r.date), 'dd/MM/yyyy');
+                const currentDateStr = formatLongDate(r.date);
 
                 // Grouping logic: Same as UI
                 const isContinuation = currentName === lastShownName && currentDateStr === lastShownDate;
@@ -618,8 +618,8 @@ export default function AttendanceHistoryPage() {
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <span className="text-sm font-medium min-w-[120px] text-center">
-                                        {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                            reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })} ` :
+                                        {reportType === 'daily' ? formatLongDate(targetDate) :
+                                            reportType === 'weekly' ? `${format(startDate, "d MMMM")} - ${format(endDate, "d MMMM yyyy", { locale: id })}` :
                                                 format(targetDate, "MMMM yyyy", { locale: id })}
                                     </span>
                                     <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
@@ -637,7 +637,7 @@ export default function AttendanceHistoryPage() {
                 <Card className="border-none shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between">
                         <CardTitle className="text-lg text-gray-800 flex flex-col md:flex-row gap-2 md:items-center">
-                            <span>Data Periode: {format(startDate, 'dd MMM yyyy', { locale: id })} - {format(endDate, 'dd MMM yyyy', { locale: id })}</span>
+                            <span>Data Periode: {formatLongDate(startDate)} - {formatLongDate(endDate)}</span>
                             <div className="relative md:ml-4">
                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                                 <Input
@@ -683,12 +683,12 @@ export default function AttendanceHistoryPage() {
                                     <tbody className="divide-y divide-gray-100 bg-white">
                                         {filteredRecords.map((record, index) => {
                                             const emp = getEmployee(record.userId);
-                                            const recordDateStr = format(new Date(record.date), 'dd/MM/yyyy');
+                                            const recordDateStr = formatLongDate(record.date);
 
                                             // Grouping logic: Hide name if same as previous row AND SAME DATE
                                             const prevRecord = index > 0 ? filteredRecords[index - 1] : null;
                                             const prevEmpName = prevRecord ? getEmployee(prevRecord.userId)?.fullName : null;
-                                            const prevDateStr = prevRecord ? format(new Date(prevRecord.date), 'dd/MM/yyyy') : null;
+                                            const prevDateStr = prevRecord ? formatLongDate(prevRecord.date) : null;
                                             const isContinuation = emp?.fullName === prevEmpName && recordDateStr === prevDateStr;
 
                                             // Status Override: If it's a continuation row, and status is "late", 

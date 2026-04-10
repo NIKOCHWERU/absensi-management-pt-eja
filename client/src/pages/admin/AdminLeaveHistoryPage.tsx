@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { Loader2, ArrowLeft, Calendar, User as UserIcon, Search, Filter , Image as ImageIcon} from "lucide-react";
 import { api } from "@shared/routes";
 import { useLocation } from "wouter";
@@ -105,7 +106,7 @@ export default function AdminLeaveHistoryPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500 font-medium whitespace-nowrap">
-                                                    {format(new Date(req.createdAt!), "d MMM yyyy HH:mm")}
+                                                    {format(new Date(req.createdAt!), "d MMMM yyyy HH:mm", { locale: id })}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {req.selectedDates ? (
@@ -114,7 +115,7 @@ export default function AdminLeaveHistoryPage() {
                                                         </div>
                                                     ) : (
                                                         <div className="font-bold text-gray-700 whitespace-nowrap">
-                                                            {format(new Date(req.startDate), "d MMM")} - {format(new Date(req.endDate), "d MMM yyyy")}
+                                                            {formatLongDate(req.startDate)} - {formatLongDate(req.endDate)}
                                                         </div>
                                                     )}
                                                 </td>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatLongDate } from "@/lib/utils";
 import { Loader2, Check, X, ArrowLeft, Calendar, User as UserIcon, MessageSquare, Info , Image as ImageIcon} from "lucide-react";
 import { api } from "@shared/routes";
 import { useLocation } from "wouter";
@@ -96,7 +97,7 @@ export default function AdminLeavePage() {
                                                 {getUserName(req.userId)}
                                             </CardTitle>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                                Diajukan pada: {format(new Date(req.createdAt!), "d MMM yyyy")}
+                                                Diajukan pada: {formatLongDate(req.createdAt!)}
                                             </p>
                                         </div>
                                     </div>
@@ -120,13 +121,13 @@ export default function AdminLeavePage() {
                                                 <div className="flex flex-wrap gap-1 mt-1">
                                                     {req.selectedDates.split(',').map(d => (
                                                         <span key={d} className="bg-white px-2 py-0.5 rounded-md border border-gray-100 text-[10px]">
-                                                            {format(new Date(d), "d MMM yyyy", { locale: id })}
+                                                            {formatLongDate(d)}
                                                         </span>
                                                     ))}
                                                 </div>
                                             ) : (
                                                 <p>
-                                                    {format(new Date(req.startDate), "EEEE, d MMM", { locale: id })} - {format(new Date(req.endDate), "EEEE, d MMM yyyy", { locale: id })}
+                                                    {formatLongDate(req.startDate)} - {formatLongDate(req.endDate)}
                                                 </p>
                                             )}
                                         </div>
