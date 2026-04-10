@@ -5,11 +5,10 @@ import { id } from "date-fns/locale";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, FileDown, ArrowLeft, Search, Filter, Image as ImageIcon } from "lucide-react";
+import { Search, Image as ImageIcon, CalendarIcon, ArrowUpDown, ChevronLeft, ChevronRight, FileDown, ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpDown } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -18,6 +17,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 export default function AttendanceSummaryPage() {
     const [, setLocation] = useLocation();
@@ -35,13 +38,20 @@ export default function AttendanceSummaryPage() {
         queryKey: ["/api/attendance"],
     });
 
-    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly">("daily");
+    const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: undefined,
+        to: undefined,
+    });
 
     // Calculate Period Range
-    let startDate: Date;
-    let endDate: Date;
+    let startDate: Date = startOfDay(new Date());
+    let endDate: Date = endOfDay(new Date());
 
-    if (reportType === "daily") {
+    if (reportType === "custom" && dateRange?.from) {
+        startDate = startOfDay(dateRange.from);
+        endDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+    } else if (reportType === "daily") {
         startDate = startOfDay(targetDate);
         endDate = endOfDay(targetDate);
     } else if (reportType === "weekly") {
@@ -178,55 +188,76 @@ export default function AttendanceSummaryPage() {
         }
     };
 
-    const handleExport = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
+    const handleExport = async () => {
+        let periodStr = '';
+        if (reportType === 'daily') {
+            periodStr = format(targetDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+        } else if (reportType === 'weekly') {
+            periodStr = `${format(startDate, "dd MMM")} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+        } else if (reportType === 'custom') {
+            periodStr = `${format(startDate, "dd MMM yyyy", { locale: id })} - ${format(endDate, "dd MMM yyyy", { locale: id })}`.toUpperCase();
+        } else {
+            periodStr = format(targetDate, "MMMM yyyy", { locale: id }).toUpperCase();
+        }
 
-        let tableHeader: string;
-        let tableRows: string;
+        const fileName = `LAPORAN ABSENSI SUMMARY PT EJA - ${periodStr}.html`;
+        
+        let logoDataUrl = '';
+        try {
+            const logoRes = await fetch('/logo_elok_buah.jpg');
+            const logoBlob = await logoRes.blob();
+            logoDataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(logoBlob);
+            });
+        } catch (_) { /* skip logo if unavailable */ }
+
+        let tableHeader: string = "";
+        let tableRows: string = "";
 
         if (reportType === 'monthly') {
             tableHeader = `
                 <tr>
-                    <th style="width: 40px;">No</th>
+                    <th class="c" style="width: 40px;">No</th>
                     <th>Nama Karyawan</th>
-                    <th style="text-align: center; width: 60px;">Hadir</th>
-                    <th style="text-align: center; width: 60px;">Telat</th>
-                    <th style="text-align: center; width: 60px;">Sakit</th>
-                    <th style="text-align: center; width: 60px;">Izin</th>
-                    <th style="text-align: center; width: 60px;">Alpha</th>
-                    <th style="text-align: center; width: 80px;">Persentase</th>
+                    <th class="c" style="width: 60px;">Hadir</th>
+                    <th class="c" style="width: 60px;">Telat</th>
+                    <th class="c" style="width: 60px;">Sakit</th>
+                    <th class="c" style="width: 60px;">Izin</th>
+                    <th class="c" style="width: 60px;">Alpha</th>
+                    <th class="c" style="width: 80px;">Persentase</th>
                 </tr>
             `;
             tableRows = sortedEmployees.map((emp, index) => `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td class="col-no">${index + 1}</td>
                     <td>
-                        <div style="font-weight: 600;">${emp.fullName}</div>
+                        <div style="font-weight: 600; color: #1d4ed8;">${emp.fullName}</div>
                         <div style="font-size: 10px; color: #64748b;">${emp.nik || '-'}</div>
                     </td>
-                    <td style="text-align: center;">${emp.stats.present}</td>
-                    <td style="text-align: center;">${emp.stats.late}</td>
-                    <td style="text-align: center;">${emp.stats.sick}</td>
-                    <td style="text-align: center;">${emp.stats.permission}</td>
-                    <td style="text-align: center;">${emp.stats.alpha}</td>
-                    <td style="text-align: center; font-weight: bold;">${emp.stats.percentage}%</td>
+                    <td class="c st-hadir">${emp.stats.present}</td>
+                    <td class="c st-telat">${emp.stats.late}</td>
+                    <td class="c st-sakit">${emp.stats.sick}</td>
+                    <td class="c st-izin">${emp.stats.permission}</td>
+                    <td class="c st-alpha">${emp.stats.alpha}</td>
+                    <td class="c"><b>${emp.stats.percentage}%</b></td>
                 </tr>
             `).join('');
         } else {
-            // Weekly or Daily: Show detailed records
+            // Weekly, Daily, Custom: Show detailed records
             tableHeader = `
                 <tr>
-                    <th style="width: 30px;">No</th>
+                    <th class="c" style="width: 30px;">No</th>
                     <th>Tanggal</th>
                     <th>Nama Karyawan</th>
-                    <th>Masuk</th>
-                    <th>Istirahat</th>
-                    <th>Selesai</th>
-                    <th>Pulang</th>
+                    <th class="c">Masuk</th>
+                    <th class="c">Istirahat</th>
+                    <th class="c">Selesai</th>
+                    <th class="c">Pulang</th>
                     <th>Jam Kerja</th>
-                    <th>Total Istirahat</th>
-                    <th>Status</th>
+                    <th class="c">Total Istirahat</th>
+                    <th class="c">Status</th>
                     <th>Keterangan</th>
                 </tr>
             `;
@@ -263,124 +294,176 @@ export default function AttendanceSummaryPage() {
                 const breakMins = calculateHours(row.breakStart, row.breakEnd);
                 const netMins = Math.max(0, workMins - breakMins);
 
+                const inTime = row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-";
+                const brkStart = row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-";
+                const brkEnd = row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-";
+                const outTime = row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-";
+
+                let statusLabel = row.status === 'present' ? 'Hadir' :
+                    row.status === 'late' ? 'Telat' :
+                        row.status === 'sick' ? 'Sakit' :
+                            row.status === 'permission' ? 'Izin' :
+                                row.status === 'absent' ? 'Alpha' : row.status;
+                
+                if ((row as any).sessionNumber > 1) {
+                    statusLabel += ` (Sesi ${(row as any).sessionNumber})`;
+                }
+                
+                const statusClass = row.status === 'present' ? 'st-hadir' :
+                    row.status === 'late' ? 'st-telat' :
+                        row.status === 'sick' ? 'st-sakit' :
+                            row.status === 'permission' ? 'st-izin' :
+                                row.status === 'absent' ? 'st-alpha' : '';
+
                 return `
                     <tr>
-                        <td>${index + 1}</td>
-                        <td>${format(new Date(row.date), "dd/MM/yyyy")}</td>
-                        <td>${row.employeeName}</td>
-                        <td>${row.checkIn ? format(new Date(row.checkIn), "HH:mm") : "-"}</td>
-                        <td>${row.breakStart ? format(new Date(row.breakStart), "HH:mm") : "-"}</td>
-                        <td>${row.breakEnd ? format(new Date(row.breakEnd), "HH:mm") : "-"}</td>
-                        <td>${row.checkOut ? format(new Date(row.checkOut), "HH:mm") : "-"}</td>
-                        <td><b>${formatDur(netMins)}</b></td>
-                        <td>${formatDur(breakMins)}</td>
-                        <td>${(row.status === 'present' ? 'Hadir' :
-                        row.status === 'late' ? 'Telat' :
-                            row.status === 'sick' ? 'Sakit' :
-                                row.status === 'permission' ? 'Izin' :
-                                    row.status === 'absent' ? 'Alpha' : row.status) +
-                    ((row as any).sessionNumber > 1 ? ` (Sesi ${(row as any).sessionNumber})` : '')
-                    }</td>
-                        <td>${row.notes || "-"}</td>
+                        <td class="col-no">${index + 1}</td>
+                        <td class="col-date">${format(new Date(row.date), "dd/MM/yyyy")}</td>
+                        <td class="col-name">${row.employeeName}</td>
+                        <td class="col-time ${inTime === '-' ? 't-dash' : 't-in'}">${inTime}</td>
+                        <td class="col-time ${brkStart === '-' ? 't-dash' : 't-brk'}">${brkStart}</td>
+                        <td class="col-time ${brkEnd === '-' ? 't-dash' : 't-brk'}">${brkEnd}</td>
+                        <td class="col-time ${outTime === '-' ? 't-dash' : 't-out'}">${outTime}</td>
+                        <td class="col-work">${formatDur(netMins)}</td>
+                        <td class="col-brk">${formatDur(breakMins)}</td>
+                        <td class="col-stat"><span class="${statusClass}">${statusLabel}</span></td>
+                        <td class="col-note">${row.notes || "-"}</td>
                     </tr>
                 `;
             }).join('');
         }
 
-        const html = `
-            <html>
-                <head>
-                    <title>Laporan Absensi Karyawan - ${format(targetDate, "MMMM yyyy", { locale: id })}</title>
-                    <style>
-                        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; }
-                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 30px; }
-                        .logo-section { display: flex; align-items: center; gap: 15px; }
-                        .logo-placeholder { width: 44px; height: 44px; background: #ea580c; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
-                        .company-info h1 { margin: 0; font-size: 20px; color: #0f172a; }
-                        .company-info p { margin: 2px 0 0; color: #64748b; font-size: 13px; }
-                        .report-title { text-align: center; margin-bottom: 30px; }
-                        .report-title h2 { margin: 0; font-size: 22px; color: #0f172a; }
-                        .report-title p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
-                        th { background: #f8fafc; color: #475569; font-weight: 600; text-align: left; padding: 12px 8px; border: 1px solid #e2e8f0; }
-                        td { padding: 10px 8px; border: 1px solid #e2e8f0; color: #334155; }
-                        .footer { margin-top: 50px; font-size: 10px; color: #94a3b8; text-align: right; }
-                        .signature-section { 
-                            margin-top: 80px; 
-                            display: flex; 
-                            justify-content: space-between; 
-                            padding: 0 50px;
-                        }
-                        .signature-box { 
-                            text-align: center; 
-                            width: 200px;
-                        }
-                        .signature-box p { 
-                            margin-bottom: 60px; 
-                            font-weight: bold; 
-                            font-size: 12px;
-                            color: #475569;
-                        }
-                        .signature-line { 
-                            border-top: 1.5px solid #475569; 
-                            padding-top: 10px;
-                            font-weight: bold;
-                            font-size: 14px;
-                            color: #1e293b;
-                        }
-                        @media print {
-                            body { padding: 0; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div class="logo-section">
-                            <div class="logo-placeholder">A</div>
-                            <div class="company-info">
-                                <h1>PT ELOK JAYA ABADHI</h1>
-                                <p>Sistem Manajemen Kehadiran Digital</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="report-title">
-                        <h2>LAPORAN REKAPITULASI ABSENSI</h2>
-                        <p>Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : 'Bulanan'}</p>
-                        <p>Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
-                    </div>
-                    <table>
-                        <thead>
-                            ${tableHeader}
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                    <div class="signature-section">
-                        <div class="signature-box">
-                            <p>CHECKED BY</p>
-                            <div class="signature-line">NIKO</div>
-                        </div>
-                        <div class="signature-box">
-                            <p>APPROVED BY</p>
-                            <div class="signature-line">CLAVERINA</div>
-                        </div>
-                    </div>
-                    <div class="footer">
-                        Dicetak pada: ${format(new Date(), "EEEE, d MMM yyyy HH:mm", { locale: id })}
-                    </div>
-                    <script>
-                        window.onload = () => {
-                            window.print();
-                        };
-                    </script>
-                </body>
-            </html>
-        `;
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>\${fileName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: white; padding: 28px 36px; }
 
-        printWindow.document.write(html);
-        printWindow.document.close();
+    /* LETTERHEAD */
+    .letterhead { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; }
+    .logo-img { width: 60px; height: 60px; object-fit: contain; }
+    .company-block h1 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #1e293b; }
+    .company-block .tagline { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .hr-thick { border: none; border-top: 2px solid #cbd5e1; margin: 6px 0 2px; }
+    .hr-thin  { border: none; border-top: 1px solid #e2e8f0; margin-bottom: 18px; }
+
+    /* TITLE */
+    .report-meta { text-align: center; margin-bottom: 20px; }
+    .report-meta h2 { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #1e293b; }
+    .report-meta .sub { font-size: 10.5px; margin-top: 4px; color: #475569; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    thead tr { background-color: #f8fafc; }
+    th { color: #374151; font-weight: 700; text-align: left; padding: 8px 8px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 2px solid #1e293b; border-right: 1px solid #e2e8f0; white-space: nowrap; }
+    th.c { text-align: center; }
+    td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; vertical-align: middle; white-space: nowrap; }
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
+
+    .col-no   { text-align: center; color: #94a3b8; font-size: 10px; }
+    .col-date { color: #374151; font-weight: 600; }
+    .col-name { color: #1d4ed8; font-weight: 600; }
+    .col-time { font-family: ui-monospace, Consolas, monospace; font-size: 11px; text-align: center; }
+    .t-in   { color: #15803d; font-weight: 700; }
+    .t-brk  { color: #b45309; font-weight: 700; }
+    .t-out  { color: #b91c1c; font-weight: 700; }
+    .t-dash { color: #94a3b8; }
+    .col-work { font-size: 11px; font-weight: 700; color: #1e293b; }
+    .col-brk  { text-align: center; font-size: 11px; font-weight: 700; color: #ea580c; }
+    .col-stat { text-align: center; font-weight: 700; font-size: 11px; }
+    .st-hadir { color: #16a34a; font-weight: 700; }
+    .st-telat { color: #ea580c; font-weight: 700;}
+    .st-sakit { color: #2563eb; font-weight: 700;}
+    .st-izin  { color: #7c3aed; font-weight: 700;}
+    .st-cuti  { color: #0d9488; font-weight: 700;}
+    .st-alpha { color: #dc2626; font-weight: 700;}
+    .col-note { font-size: 10.5px; color: #475569; white-space: normal; max-width: 200px; }
+
+    /* SIGNATURE */
+    .signature-section { margin-top: 48px; display: flex; justify-content: space-between; padding: 0 24px; }
+    .sig-box { text-align: center; width: 160px; }
+    .sig-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #374151; margin-bottom: 64px; }
+    .sig-name { font-size: 11px; font-weight: 800; border-top: 1.5px solid #374151; padding-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; color: #1e293b; }
+
+    .footer { margin-top: 18px; font-size: 8.5px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
+
+    /* DOWNLOAD BUTTON */
+    .btn-wrap { text-align: center; margin-top: 20px; }
+    .download-btn { display: inline-flex; align-items: center; gap: 8px; background: #1d4ed8; color: #fff; border: none; padding: 10px 28px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; text-decoration: none; }
+    .download-btn:hover { background: #1e40af; }
+
+    @media print {
+      body { padding: 12px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      thead tr, tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .btn-wrap { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="letterhead">
+    <img src="\${logoDataUrl}" class="logo-img" alt="Logo" />
+    <div class="company-block">
+      <h1>PT Elok Jaya Abadhi</h1>
+      <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
+    </div>
+  </div>
+  <hr class="hr-thick" />
+  <hr class="hr-thin" />
+
+  <div class="report-meta">
+    <h2>Laporan Summary Absensi</h2>
+    <p class="sub">Tipe: \${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
+    <p class="sub">Periode: \${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - \${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+  </div>
+
+  <table>
+    <thead>
+      \${tableHeader}
+    </thead>
+    <tbody>
+      \${tableRows}
+    </tbody>
+  </table>
+
+  <div class="signature-section">
+    <div class="sig-box">
+      <p class="sig-label">Checked By</p>
+      <div class="sig-name">NIKO</div>
+    </div>
+    <div class="sig-box">
+      <p class="sig-label">Approved By</p>
+      <div class="sig-name">CLAVERINA</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; \${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
+  </div>
+
+  <div class="btn-wrap">
+    <a id="dl-btn" class="download-btn" href="#">&#11015;&nbsp; Download File</a>
+  </div>
+
+  <script>
+    var _fn = "\${fileName}";
+    document.title = _fn;
+    window.onload = function() {
+      var btn = document.getElementById('dl-btn');
+      if (btn) {
+        btn.href = window.location.href;
+        btn.download = _fn;
+      }
+      setTimeout(function() { window.print(); }, 600);
+    };
+  </script>
+</body>
+</html>\`;
+
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
     };
 
     return (
@@ -411,20 +494,66 @@ export default function AttendanceSummaryPage() {
                                 <SelectItem value="daily">Harian</SelectItem>
                                 <SelectItem value="weekly">Mingguan</SelectItem>
                                 <SelectItem value="monthly">Bulanan</SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
                             </SelectContent>
                         </Select>
-                        <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
-                        <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm font-medium min-w-[120px] text-center">
-                            {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
-                                reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
-                                    format(targetDate, "MMMM yyyy", { locale: id })}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        {reportType !== "custom" && (
+                            <>
+                                <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
+                                <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm font-medium min-w-[120px] text-center">
+                                    {reportType === 'daily' ? format(targetDate, "d MMM yyyy", { locale: id }) :
+                                        reportType === 'weekly' ? `${format(startDate, "d MMM")} - ${format(endDate, "d MMM yyyy", { locale: id })}` :
+                                            format(targetDate, "MMMM yyyy", { locale: id })}
+                                </span>
+                                <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </>
+                        )}
+                        {reportType === "custom" && (
+                            <>
+                                <div className="h-4 w-[1px] bg-gray-200 mx-1"></div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            id="date"
+                                            variant={"ghost"}
+                                            className={cn(
+                                                "h-8 justify-start text-left font-medium",
+                                                !dateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {dateRange?.from ? (
+                                                dateRange.to ? (
+                                                    <>
+                                                        {format(dateRange.from, "d MMM", { locale: id })} -{" "}
+                                                        {format(dateRange.to, "d MMM yyyy", { locale: id })}
+                                                    </>
+                                                ) : (
+                                                    format(dateRange.from, "d MMM yyyy", { locale: id })
+                                                )
+                                            ) : (
+                                                <span>Pilih Tanggal</span>
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={dateRange?.from}
+                                            selected={dateRange}
+                                            onSelect={setDateRange}
+                                            numberOfMonths={2}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
