@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { useLocation } from "wouter";
@@ -41,6 +41,19 @@ export default function AttendanceHistoryPage() {
     const [sortField, setSortField] = useState<'date' | 'name'>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [isExporting, setIsExporting] = useState(false);
+    const [logoBase64, setLogoBase64] = useState("");
+
+    useEffect(() => {
+        // Pre-fetch logo to avoid async delays during export that trigger popup blockers
+        fetch('/logo_elok_buah.jpg')
+            .then(res => res.blob())
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onload = () => setLogoBase64(reader.result as string);
+                reader.readAsDataURL(blob);
+            })
+            .catch(() => {});
+    }, []);
 
     const toggleSort = (field: 'date' | 'name') => {
         if (sortField === field) {
@@ -179,6 +192,7 @@ export default function AttendanceHistoryPage() {
     };
 
     const handleExport = async () => {
+        let periodStr = '';
         if (reportType === 'daily') {
             periodStr = formatLongDate(targetDate).toUpperCase();
         } else if (reportType === 'weekly') {
@@ -219,17 +233,7 @@ export default function AttendanceHistoryPage() {
 
         setIsExporting(true);
         try {
-            // Fetch logo
-            let logoDataUrl = '';
-            try {
-                const logoRes = await fetch('/logo_elok_buah.jpg');
-                const logoBlob = await logoRes.blob();
-                logoDataUrl = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result as string);
-                    reader.readAsDataURL(logoBlob);
-                });
-            } catch (_) { /* skip logo if unavailable */ }
+            // Logo is already pre-fetched in logoBase64 state
 
             // Collect all unique URLs
             const uniqueUrls = new Set<string>();
@@ -297,7 +301,7 @@ export default function AttendanceHistoryPage() {
 </head>
 <body>
   <div class="letterhead">
-    <img src="${logoDataUrl}" class="logo-img" alt="Logo" />
+    <img src="${logoBase64}" class="logo-img" alt="Logo" />
     <div class="company-block">
       <h1>PT Elok Jaya Abadhi</h1>
       <p class="tagline">Sistem Manajemen Kehadiran Digital</p>

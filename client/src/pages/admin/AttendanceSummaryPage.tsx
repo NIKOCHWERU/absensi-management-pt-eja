@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { User, Attendance } from "@shared/schema";
 import { format, subMonths, addMonths, isSameMonth, setDate, isAfter, isBefore, isEqual, differenceInBusinessDays, startOfMonth, endOfMonth, isWeekend, startOfWeek, endOfWeek, startOfDay, endOfDay, subDays, addDays } from "date-fns";
 import { id } from "date-fns/locale";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Image as ImageIcon, CalendarIcon, ArrowUpDown, ChevronLeft, ChevronRight, FileDown, ArrowLeft } from "lucide-react";
@@ -26,6 +26,19 @@ export default function AttendanceSummaryPage() {
     const [, setLocation] = useLocation();
     // State for selected period (e.g., Feb 2026 means Jan 26 - Feb 25)
     const [targetDate, setTargetDate] = useState(new Date());
+    const [logoBase64, setLogoBase64] = useState("");
+
+    useEffect(() => {
+        // Pre-fetch logo to avoid async delays during export that trigger popup blockers
+        fetch('/logo_elok_buah.jpg')
+            .then(res => res.blob())
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onload = () => setLogoBase64(reader.result as string);
+                reader.readAsDataURL(blob);
+            })
+            .catch(() => {});
+    }, []);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortField, setSortField] = useState<string>("fullName");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -188,7 +201,7 @@ export default function AttendanceSummaryPage() {
         }
     };
 
-    const handleExport = async () => {
+    const handleExport = () => {
         let periodStr = '';
         if (reportType === 'daily') {
             periodStr = formatLongDate(targetDate).toUpperCase();
@@ -201,17 +214,6 @@ export default function AttendanceSummaryPage() {
         }
 
         const fileName = `LAPORAN ABSENSI SUMMARY PT EJA - ${periodStr}.html`;
-        
-        let logoDataUrl = '';
-        try {
-            const logoRes = await fetch('/logo_elok_buah.jpg');
-            const logoBlob = await logoRes.blob();
-            logoDataUrl = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.readAsDataURL(logoBlob);
-            });
-        } catch (_) { /* skip logo if unavailable */ }
 
         let tableHeader: string = "";
         let tableRows: string = "";
@@ -403,7 +405,7 @@ export default function AttendanceSummaryPage() {
 </head>
 <body>
   <div class="letterhead">
-    <img src="${logoDataUrl}" class="logo-img" alt="Logo" />
+    <img src="${logoBase64}" class="logo-img" alt="Logo" />
     <div class="company-block">
       <h1>PT Elok Jaya Abadhi</h1>
       <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
