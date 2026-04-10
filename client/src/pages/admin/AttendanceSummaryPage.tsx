@@ -189,6 +189,7 @@ export default function AttendanceSummaryPage() {
     };
 
     const handleExport = async () => {
+        let periodStr = '';
         if (reportType === 'daily') {
             periodStr = formatLongDate(targetDate).toUpperCase();
         } else if (reportType === 'weekly') {
@@ -413,7 +414,7 @@ export default function AttendanceSummaryPage() {
 
   <div class="report-meta">
     <h2>Laporan Ringkasan Absensi PT EJA</h2>
-    <p class="sub">Metode: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
     <p class="sub">Rentang Waktu: ${format(startDate, "EEEE, d MMMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMMM yyyy", { locale: id })}</p>
   </div>
 
