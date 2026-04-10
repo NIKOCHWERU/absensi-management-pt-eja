@@ -336,7 +336,7 @@ export default function AttendanceSummaryPage() {
         const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>\${fileName}</title>
+  <title>${fileName}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: white; padding: 28px 36px; }
@@ -403,7 +403,7 @@ export default function AttendanceSummaryPage() {
 </head>
 <body>
   <div class="letterhead">
-    <img src="\${logoDataUrl}" class="logo-img" alt="Logo" />
+    <img src="${logoDataUrl}" class="logo-img" alt="Logo" />
     <div class="company-block">
       <h1>PT Elok Jaya Abadhi</h1>
       <p class="tagline">Sistem Manajemen Kehadiran Digital</p>
@@ -414,16 +414,16 @@ export default function AttendanceSummaryPage() {
 
   <div class="report-meta">
     <h2>Laporan Summary Absensi</h2>
-    <p class="sub">Tipe: \${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
-    <p class="sub">Periode: \${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - \${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
+    <p class="sub">Tipe: ${reportType === 'daily' ? 'Harian' : reportType === 'weekly' ? 'Mingguan' : reportType === 'custom' ? 'Kustom' : 'Bulanan'}</p>
+    <p class="sub">Periode: ${format(startDate, "EEEE, d MMM yyyy", { locale: id })} - ${format(endDate, "EEEE, d MMM yyyy", { locale: id })}</p>
   </div>
 
   <table>
     <thead>
-      \${tableHeader}
+      ${tableHeader}
     </thead>
     <tbody>
-      \${tableRows}
+      ${tableRows}
     </tbody>
   </table>
 
@@ -439,7 +439,7 @@ export default function AttendanceSummaryPage() {
   </div>
 
   <div class="footer">
-    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; \${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
+    Dokumen ini dicetak secara otomatis oleh Sistem Absensi PT Elok Jaya Abadhi &mdash; ${format(new Date(), "d MMMM yyyy, HH:mm", { locale: id })} WIB &mdash; Harap simpan sebagai arsip resmi perusahaan.
   </div>
 
   <div class="btn-wrap">
@@ -447,7 +447,7 @@ export default function AttendanceSummaryPage() {
   </div>
 
   <script>
-    var _fn = "\${fileName}";
+    var _fn = "${fileName}";
     document.title = _fn;
     window.onload = function() {
       var btn = document.getElementById('dl-btn');
@@ -459,7 +459,7 @@ export default function AttendanceSummaryPage() {
     };
   </script>
 </body>
-</html>\`;
+</html>`;
 
         const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
         const blobUrl = URL.createObjectURL(blob);
