@@ -230,7 +230,6 @@ export default function AttendanceSummaryPage() {
                 <th class="c" style="width: 80px;">Sakit</th>
                 <th class="c" style="width: 80px;">Izin</th>
                 <th class="c" style="width: 80px;">Alpha</th>
-                <th class="c" style="width: 100px;">Persentase</th>
             </tr>
         `;
 
@@ -246,7 +245,6 @@ export default function AttendanceSummaryPage() {
                 <td class="c"><span class="st-sakit">${emp.stats.sick}</span></td>
                 <td class="c"><span class="st-izin">${emp.stats.permission}</span></td>
                 <td class="c"><span class="st-alpha">${emp.stats.alpha}</span></td>
-                <td class="c"><b style="font-size: 13px;">${emp.stats.percentage}%</b></td>
             </tr>
         `).join('') + `
             <tr style="background: #f1f5f9; font-weight: 800; border-top: 2px solid #1e293b;">
@@ -256,9 +254,71 @@ export default function AttendanceSummaryPage() {
                 <td class="c"><span class="st-sakit">${grandTotals.sick}</span></td>
                 <td class="c"><span class="st-izin">${grandTotals.permission}</span></td>
                 <td class="c"><span class="st-alpha">${grandTotals.alpha}</span></td>
-                <td class="c">&mdash;</td>
             </tr>
         `;
+
+        // Generate Detailed Evidence Section
+        let detailHtml = "";
+        sortedEmployees.forEach(emp => {
+            const records = getAttendanceForPeriod(emp.id);
+            if (records.length > 0) {
+                // Sort records by date
+                records.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                
+                detailHtml += `
+                    <div style="margin-top: 30px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid;">
+                        <div style="background: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">
+                            <h3 style="margin: 0; font-size: 12px; color: #1e293b;">BUKTI DETAIL: ${emp.fullName.toUpperCase()}</h3>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead style="background: #f1f5f9;">
+                                <tr>
+                                    <th style="padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; width: 140px;">Tanggal</th>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Masuk</th>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Pulang</th>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Durasi</th>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${records.map(r => {
+                                    const inTime = r.checkIn ? format(new Date(r.checkIn), "HH:mm") : "-";
+                                    const outTime = r.checkOut ? format(new Date(r.checkOut), "HH:mm") : "-";
+                                    
+                                    let duration = "-";
+                                    if (r.checkIn && r.checkOut) {
+                                        const diff = Math.abs(new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime());
+                                        const h = Math.floor(diff / 3600000);
+                                        const m = Math.floor((diff % 3600000) / 60000);
+                                        duration = `${h}j ${m}m`;
+                                    }
+
+                                    const stClass = r.status === 'present' ? 'st-hadir' :
+                                                    r.status === 'late' ? 'st-telat' :
+                                                    r.status === 'sick' ? 'st-sakit' :
+                                                    r.status === 'permission' ? 'st-izin' : 'st-alpha';
+
+                                    const stLabel = r.status === 'present' ? 'Hadir' :
+                                                   r.status === 'late' ? 'Telat' :
+                                                   r.status === 'sick' ? 'Sakit' :
+                                                   r.status === 'permission' ? 'Izin' : 'Alpha';
+
+                                    return `
+                                        <tr>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9;">${formatLongDate(r.date)}</td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #15803d;">${inTime}</td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #b91c1c;">${outTime}</td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: bold;">${duration}</td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center;"><span class="${stClass}">${stLabel}</span></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        });
 
         const html = `<!DOCTYPE html>
 <html>
@@ -353,6 +413,8 @@ export default function AttendanceSummaryPage() {
       ${tableRows}
     </tbody>
   </table>
+
+  ${detailHtml}
 
   <div class="signature-section">
     <div class="sig-box">
