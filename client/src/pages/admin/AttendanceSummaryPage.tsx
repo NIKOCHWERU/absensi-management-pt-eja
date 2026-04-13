@@ -173,7 +173,7 @@ export default function AttendanceSummaryPage() {
         let valA: any, valB: any;
 
         switch (sortField) {
-            case 'present': valA = a.stats.present; valB = b.stats.present; break;
+            case 'present': valA = a.stats.totalAttendance; valB = b.stats.totalAttendance; break;
             case 'late': valA = a.stats.late; valB = b.stats.late; break;
             case 'sick': valA = a.stats.sick; valB = b.stats.sick; break;
             case 'permission': valA = a.stats.permission; valB = b.stats.permission; break;
@@ -214,7 +214,7 @@ export default function AttendanceSummaryPage() {
         let tableRows: string = "";
 
         const grandTotals = sortedEmployees.reduce((acc, emp) => ({
-            present: acc.present + emp.stats.present,
+            present: acc.present + emp.stats.totalAttendance,
             late: acc.late + emp.stats.late,
             sick: acc.sick + emp.stats.sick,
             permission: acc.permission + emp.stats.permission,
@@ -240,7 +240,7 @@ export default function AttendanceSummaryPage() {
                     <div style="font-weight: 700; color: #1e293b; font-size: 13px;">${emp.fullName}</div>
                     <div style="font-size: 10px; color: #64748b; font-family: monospace;">NIK: ${emp.nik || '-'}</div>
                 </td>
-                <td class="c"><span class="st-hadir">${emp.stats.present}</span></td>
+                <td class="c"><span class="st-hadir">${emp.stats.totalAttendance}</span></td>
                 <td class="c"><span class="st-telat">${emp.stats.late}</span></td>
                 <td class="c"><span class="st-sakit">${emp.stats.sick}</span></td>
                 <td class="c"><span class="st-izin">${emp.stats.permission}</span></td>
@@ -273,6 +273,7 @@ export default function AttendanceSummaryPage() {
                         <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
                             <thead style="background: #f1f5f9;">
                                 <tr>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0; width: 30px;">No</th>
                                     <th style="padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; width: 140px;">Tanggal</th>
                                     <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Masuk</th>
                                     <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Pulang</th>
@@ -281,7 +282,7 @@ export default function AttendanceSummaryPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${records.map(r => {
+                                ${records.map((r, idx) => {
                                     const inTime = r.checkIn ? format(new Date(r.checkIn), "HH:mm") : "-";
                                     const outTime = r.checkOut ? format(new Date(r.checkOut), "HH:mm") : "-";
                                     
@@ -305,6 +306,7 @@ export default function AttendanceSummaryPage() {
 
                                     return `
                                         <tr>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; color: #64748b;">${idx + 1}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9;">${formatLongDate(r.date)}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #15803d;">${inTime}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #b91c1c;">${outTime}</td>
@@ -594,7 +596,7 @@ export default function AttendanceSummaryPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center font-mono font-bold text-green-600 bg-green-50/30">
-                                                {emp.stats.present}
+                                                {emp.stats.totalAttendance}
                                             </TableCell>
                                             <TableCell className="text-center font-mono font-bold text-yellow-600 bg-yellow-50/30">
                                                 {emp.stats.late}
@@ -630,15 +632,29 @@ export default function AttendanceSummaryPage() {
                                         </TableRow>
                                     );
                                 })}
-                                {employeeStats.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={9} className="h-24 text-center text-gray-500">
-                                            Tidak ada data karyawan ditemukan.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                    </TableBody>
+                                    <tfoot className="bg-gray-100 font-bold">
+                                        <TableRow className="hover:bg-gray-100">
+                                            <TableCell colSpan={2} className="text-right pr-4 uppercase tracking-wider">Grand Total</TableCell>
+                                            <TableCell className="text-center font-mono text-green-700 bg-green-100/50">
+                                                {sortedEmployees.reduce((acc, emp) => acc + emp.stats.totalAttendance, 0)}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono text-yellow-700 bg-yellow-100/50">
+                                                {sortedEmployees.reduce((acc, emp) => acc + emp.stats.late, 0)}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono text-blue-700 bg-blue-100/50">
+                                                {sortedEmployees.reduce((acc, emp) => acc + emp.stats.sick, 0)}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono text-purple-700 bg-purple-100/50">
+                                                {sortedEmployees.reduce((acc, emp) => acc + emp.stats.permission, 0)}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono text-red-700 bg-red-100/50">
+                                                {sortedEmployees.reduce((acc, emp) => acc + emp.stats.alpha, 0)}
+                                            </TableCell>
+                                            <TableCell colSpan={2}></TableCell>
+                                        </TableRow>
+                                    </tfoot>
+                                </Table>
                     </div>
                 </Card>
             </main>

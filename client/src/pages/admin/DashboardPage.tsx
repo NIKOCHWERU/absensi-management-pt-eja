@@ -417,7 +417,21 @@ export default function AdminDashboard() {
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <p className="text-sm font-medium text-gray-500 mb-1">Hadir Hari Ini</p>
-                                    <h3 className="text-4xl font-bold text-gray-800">{stats?.presentToday || 0}</h3>
+                                    <h3 className="text-4xl font-bold text-gray-800">
+                                        {(() => {
+                                            const now = new Date();
+                                            const isToday = (date: any) => new Date(date).toDateString() === now.toDateString();
+                                            const todayRecords = attendanceHistory?.filter(a => isToday(a.date)) || [];
+                                            // Count unique users who are present or late
+                                            const userSet = new Set();
+                                            todayRecords.forEach(r => {
+                                                if (['present', 'late'].includes(r.status || '')) {
+                                                    userSet.add(r.userId);
+                                                }
+                                            });
+                                            return userSet.size;
+                                        })()}
+                                    </h3>
                                 </div>
                                 <div className="p-2 bg-gradient-to-br from-green-100 to-green-50 rounded-lg group-hover:scale-110 transition-transform">
                                     <Clock className="h-6 w-6 text-green-500" />
