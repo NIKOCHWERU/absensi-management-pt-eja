@@ -278,7 +278,8 @@ export default function AttendanceSummaryPage() {
                                     <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Masuk</th>
                                     <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Pulang</th>
                                     <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Durasi</th>
-                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Status</th>
+                                    <th style="padding: 6px 10px; text-align: center; border-bottom: 1px solid #e2e8f0; width: 60px;">Status</th>
+                                    <th style="padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; width: 100px;">Alasan / Ket. Jam</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -312,11 +313,11 @@ export default function AttendanceSummaryPage() {
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #b91c1c;">${outTime}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: bold;">${duration}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                                                <div style="display:flex; align-items:center; justify-content:center; gap:4px; flex-wrap:wrap;">
-                                                    <span class="${stClass}">${stLabel}</span>
-                                                    ${r.status === 'late' && (r as any).lateReason ? `<span style="font-size:8px; color:#c2410c; background:#fff7ed; padding:1px 3px; border:1px solid #ffedd5; border-radius:2px; max-width:100px; white-space:normal; line-height:1.1;">${(r as any).lateReason}</span>` : ''}
-                                                    ${r.status === 'permission' && r.notes ? `<span style="font-size:8px; color:#7c3aed; background:#f5f3ff; padding:1px 3px; border:1px solid #ede9fe; border-radius:2px; max-width:100px; white-space:normal; line-height:1.1;">${r.notes.replace(/\[DURATION:\d+\]\s*/, '')}</span>` : ''}
-                                                </div>
+                                                <span class="${stClass}">${stLabel}</span>
+                                            </td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 8px; color: #475569; line-height: 1.2;">
+                                                ${r.status === 'late' && (r as any).lateReason ? (r as any).lateReason : ''}
+                                                ${r.status === 'permission' && r.notes ? r.notes.replace(/\[DURATION:\d+\]\s*/, '') : ''}
                                             </td>
                                         </tr>
                                     `;

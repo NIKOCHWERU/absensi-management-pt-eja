@@ -209,28 +209,16 @@ export default function RecapPage() {
                     })()}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                    record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                      record.status === 'absent' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                    }`}>
-                    {record.status === 'present' ? 'Hadir' :
-                      record.status === 'late' ? 'Telat' :
-                        record.status === 'sick' ? 'Sakit' :
-                          record.status === 'permission' ? 'Izin' :
-                            record.status === 'absent' ? 'Alpa' : record.status}
-                  </div>
-                  {record.status === 'late' && (record as any).lateReason && (
-                    <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 max-w-[100px] truncate" title={(record as any).lateReason}>
-                      {(record as any).lateReason}
-                    </span>
-                  )}
-                  {record.status === 'permission' && record.notes && (
-                    <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 max-w-[100px] truncate" title={record.notes}>
-                      {record.notes.replace(/\[DURATION:\d+\]\s*/, '')}
-                    </span>
-                  )}
+                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                  record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                    record.status === 'absent' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
+                  }`}>
+                  {record.status === 'present' ? 'Hadir' :
+                    record.status === 'late' ? 'Telat' :
+                      record.status === 'sick' ? 'Sakit' :
+                        record.status === 'permission' ? 'Izin' :
+                          record.status === 'absent' ? 'Alpa' : record.status}
                 </div>
               </div>
             ))}
@@ -261,32 +249,20 @@ export default function RecapPage() {
                 <p className="font-bold text-lg text-primary">
                   {formatLongDate(selectedRecord.date)}
                 </p>
-                <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                    selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                      selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                    }`}>
-                    {selectedRecord.status === 'present' ? 'Hadir' :
-                      selectedRecord.status === 'late' ? 'Telat' :
-                        selectedRecord.status === 'sick' ? 'Sakit' :
-                          selectedRecord.status === 'permission' ? 'Izin' :
-                            selectedRecord.status === 'absent' ? 'Alpa' : selectedRecord.status}
-                  </span>
-                  {selectedRecord.status === 'late' && (selectedRecord as any).lateReason && (
-                    <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">
-                      {(selectedRecord as any).lateReason}
-                    </span>
-                  )}
-                  {selectedRecord.status === 'permission' && selectedRecord.notes && (
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold">
-                      {selectedRecord.notes.replace(/\[DURATION:\d+\]\s*/, '')}
-                    </span>
-                  )}
-                  {(selectedRecord as any).sessionNumber && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">Sesi {(selectedRecord as any).sessionNumber}</span>
-                  )}
-                </div>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                  selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                    selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
+                  }`}>
+                  {selectedRecord.status === 'present' ? 'Hadir' :
+                    selectedRecord.status === 'late' ? 'Telat' :
+                      selectedRecord.status === 'sick' ? 'Sakit' :
+                        selectedRecord.status === 'permission' ? 'Izin' :
+                          selectedRecord.status === 'absent' ? 'Alpa' : selectedRecord.status}
+                </span>
+                {(selectedRecord as any).sessionNumber && (
+                  <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">Sesi {(selectedRecord as any).sessionNumber}</span>
+                )}
                 {selectedRecord.shift && (
                   <p className="text-xs text-muted-foreground mt-2">Shift: <span className="font-bold">{selectedRecord.shift}</span></p>
                 )}

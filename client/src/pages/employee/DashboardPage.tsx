@@ -695,28 +695,12 @@ export default function EmployeeDashboard() {
 
                     <div className="mt-4 flex flex-col items-center">
                         <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Status Hari Ini</p>
-                        <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-2">
-                                <span className={`text-2xl font-bold ${getStatusText() === 'Telat' ? 'text-red-600' : 'text-primary'}`}>
-                                    {getStatusText()}
-                                </span>
-                                {today?.status === 'late' && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">TELAT</span>
-                                        {(today as any).lateReason && (
-                                            <span className="text-[10px] text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-100 max-w-[150px] truncate" title={(today as any).lateReason}>
-                                                {(today as any).lateReason}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                                {(today?.status === 'sick' || today?.status === 'permission') && today.notes && (
-                                    <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100 max-w-[150px] truncate" title={today.notes}>
-                                        {today.notes.replace(/\[DURATION:\d+\]\s*/, '')}
-                                    </span>
-                                )}
-                                {sessionCount > 0 && <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">Sesi {sessionCount}/5</span>}
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-2xl font-bold ${getStatusText() === 'Telat' ? 'text-red-600' : 'text-primary'}`}>
+                                {getStatusText()}
+                            </span>
+                            {today?.status === 'late' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">TELAT</span>}
+                            {sessionCount > 0 && <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">Sesi {sessionCount}/5</span>}
                         </div>
                         {locationAddress && (
                             <p className="text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1 max-w-[200px] text-center">
