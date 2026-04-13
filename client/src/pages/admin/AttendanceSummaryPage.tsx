@@ -311,7 +311,13 @@ export default function AttendanceSummaryPage() {
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #15803d;">${inTime}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-family: monospace; font-weight: bold; color: #b91c1c;">${outTime}</td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: bold;">${duration}</td>
-                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center;"><span class="${stClass}">${stLabel}</span></td>
+                                            <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                                                <div style="display:flex; align-items:center; justify-content:center; gap:4px; flex-wrap:wrap;">
+                                                    <span class="${stClass}">${stLabel}</span>
+                                                    ${r.status === 'late' && (r as any).lateReason ? `<span style="font-size:8px; color:#c2410c; background:#fff7ed; padding:1px 3px; border:1px solid #ffedd5; border-radius:2px; max-width:100px; white-space:normal; line-height:1.1;">${(r as any).lateReason}</span>` : ''}
+                                                    ${r.status === 'permission' && r.notes ? `<span style="font-size:8px; color:#7c3aed; background:#f5f3ff; padding:1px 3px; border:1px solid #ede9fe; border-radius:2px; max-width:100px; white-space:normal; line-height:1.1;">${r.notes.replace(/\[DURATION:\d+\]\s*/, '')}</span>` : ''}
+                                                </div>
+                                            </td>
                                         </tr>
                                     `;
                                 }).join('')}

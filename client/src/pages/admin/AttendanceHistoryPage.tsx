@@ -425,7 +425,11 @@ export default function AttendanceHistoryPage() {
                   </div>
                 </td>
                 <td>
-                  <span class="status-badge ${statusClass}">${statusLabel}</span>
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                    ${sts === 'late' && (r as any).lateReason ? `<span style="font-size:9px; color:#c2410c; background:#fff7ed; padding:1px 4px; border:1px solid #ffedd5; border-radius:3px; max-width:120px; white-space:normal; line-height:1.2;">${(r as any).lateReason}</span>` : ''}
+                    ${sts === 'permission' && cleanNotes ? `<span style="font-size:9px; color:#7c3aed; background:#f5f3ff; padding:1px 4px; border:1px solid #ede9fe; border-radius:3px; max-width:120px; white-space:normal; line-height:1.2;">${cleanNotes}</span>` : ''}
+                  </div>
                   ${extraNotes}
                 </td>
                 <td>${photosHtml}</td>
@@ -804,22 +808,39 @@ export default function AttendanceHistoryPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-col gap-2 items-start max-w-[200px]">
-                                                            <span className={`px - 2 py - 1 rounded - md text - [10px] font - bold uppercase
-                                                                ${effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
-                                                                    effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                        effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                            effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                                effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                                                                    'bg-gray-100 text-gray-700'
-                                                                } `}>
-                                                                {effectiveStatus === 'present' ? 'Hadir' :
-                                                                    effectiveStatus === 'late' ? 'Telat' :
-                                                                        effectiveStatus === 'sick' ? 'Sakit' :
-                                                                            effectiveStatus === 'permission' ? 'Izin' :
-                                                                                effectiveStatus === 'cuti' ? 'Cuti' :
-                                                                                    effectiveStatus === 'absent' ? 'Alpha' : effectiveStatus}
-                                                            </span>
+                                                        <div className="flex flex-col gap-2 items-start max-w-[250px]">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase
+                                                                    ${effectiveStatus === 'present' ? 'bg-green-100 text-green-700' :
+                                                                        effectiveStatus === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                            effectiveStatus === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                                effectiveStatus === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                                    effectiveStatus === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                                        'bg-gray-100 text-gray-700'
+                                                                    } `}>
+                                                                    {effectiveStatus === 'present' ? 'Hadir' :
+                                                                        effectiveStatus === 'late' ? 'Telat' :
+                                                                            effectiveStatus === 'sick' ? 'Sakit' :
+                                                                                effectiveStatus === 'permission' ? 'Izin' :
+                                                                                    effectiveStatus === 'cuti' ? 'Cuti' :
+                                                                                        effectiveStatus === 'absent' ? 'Alpha' : effectiveStatus}
+                                                                </span>
+
+                                                                {effectiveStatus === 'late' && (record as any).lateReason && (
+                                                                    <span className="text-[10px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded border border-orange-100 max-w-[150px] truncate" title={(record as any).lateReason}>
+                                                                        {(record as any).lateReason}
+                                                                    </span>
+                                                                )}
+
+                                                                {(() => {
+                                                                    const { cleanNotes } = parsePermitInfo(record.notes);
+                                                                    return effectiveStatus === 'permission' && cleanNotes && (
+                                                                        <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-1 rounded border border-purple-100 max-w-[150px] truncate" title={cleanNotes}>
+                                                                            {cleanNotes}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </div>
 
                                                             {(() => {
                                                                 const { duration, cleanNotes } = parsePermitInfo(record.notes);

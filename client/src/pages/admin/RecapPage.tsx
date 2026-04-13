@@ -465,7 +465,13 @@ export default function RecapPage() {
           <td class="col-time ${outTime === '-' ? 't-dash' : 't-out'}">${outTime}</td>
           <td class="col-work">${jamKerja}</td>
           <td class="col-brk">${breakMins > 0 ? formatDuration(breakMins) : '-'}</td>
-          <td class="col-stat"><span class="${statusClass}">${statusLabel}</span></td>
+          <td class="col-stat">
+            <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+              <span class="${statusClass}">${statusLabel}</span>
+              ${row.status === 'late' && (row as any).lateReason ? `<span style="font-size:9px; color:#c2410c; background:#fff7ed; padding:1px 4px; border:1px solid #ffedd5; border-radius:3px; max-width:120px; white-space:normal; text-align:left; line-height:1.2;">${(row as any).lateReason}</span>` : ''}
+              ${row.status === 'permission' && row.notes ? `<span style="font-size:9px; color:#7c3aed; background:#f5f3ff; padding:1px 4px; border:1px solid #ede9fe; border-radius:3px; max-width:120px; white-space:normal; text-align:left; line-height:1.2;">${row.notes}</span>` : ''}
+            </div>
+          </td>
           <td class="col-note">${keterangan}${lateNote}</td>
         </tr>`;
         }).join('')}
@@ -795,21 +801,33 @@ export default function RecapPage() {
                                                     })()}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                                                ${row.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                            row.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                                                row.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                    row.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                        row.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
-                                                                            'bg-gray-100 text-gray-700'}`}>
-                                                        {row.status === 'present' ? 'Hadir' :
-                                                            row.status === 'late' ? 'Telat' :
-                                                                row.status === 'sick' ? 'Sakit' :
-                                                                    row.status === 'permission' ? 'Izin' :
-                                                                        row.status === 'cuti' ? 'Cuti' :
-                                                                            row.status === 'absent' ? 'Alpha' : row.status}
-                                                        {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                                                    ${row.status === 'present' ? 'bg-green-100 text-green-700' :
+                                                                row.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                                                    row.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                        row.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                            row.status === 'cuti' ? 'bg-teal-100 text-teal-700' :
+                                                                                'bg-gray-100 text-gray-700'}`}>
+                                                            {row.status === 'present' ? 'Hadir' :
+                                                                row.status === 'late' ? 'Telat' :
+                                                                    row.status === 'sick' ? 'Sakit' :
+                                                                        row.status === 'permission' ? 'Izin' :
+                                                                            row.status === 'cuti' ? 'Cuti' :
+                                                                                row.status === 'absent' ? 'Alpha' : row.status}
+                                                            {(row as any).sessionNumber > 1 && ` (Sesi ${(row as any).sessionNumber})`}
+                                                        </span>
+                                                        {row.status === 'late' && (row as any).lateReason && (
+                                                            <span className="text-[10px] text-orange-600 font-medium bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 max-w-[150px] truncate" title={(row as any).lateReason}>
+                                                                {(row as any).lateReason}
+                                                            </span>
+                                                        )}
+                                                        {row.status === 'permission' && row.notes && (
+                                                            <span className="text-[10px] text-purple-600 font-medium bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 max-w-[150px] truncate" title={row.notes}>
+                                                                {row.notes}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-500 italic max-w-xs">
                                                     <div className="flex flex-col gap-1">

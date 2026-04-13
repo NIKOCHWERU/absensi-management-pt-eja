@@ -741,18 +741,30 @@ export default function AdminDashboard() {
                                                     {record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase
-                                                ${record.status === 'present' ? 'bg-green-100 text-green-700' :
-                                                            record.status === 'late' ? 'bg-red-100 text-red-700' :
-                                                                record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
-                                                                    record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
-                                                                        'bg-gray-100 text-gray-700'}`}>
-                                                        {record.status === 'present' ? 'Hadir' :
-                                                            record.status === 'late' ? 'Telat' :
-                                                                record.status === 'sick' ? 'Sakit' :
-                                                                    record.status === 'permission' ? 'Izin' :
-                                                                        record.status === 'absent' ? 'Alpha' : record.status}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase
+                                                    ${record.status === 'present' ? 'bg-green-100 text-green-700' :
+                                                                record.status === 'late' ? 'bg-red-100 text-red-700' :
+                                                                    record.status === 'sick' ? 'bg-blue-100 text-blue-700' :
+                                                                        record.status === 'permission' ? 'bg-purple-100 text-purple-700' :
+                                                                            'bg-gray-100 text-gray-700'}`}>
+                                                            {record.status === 'present' ? 'Hadir' :
+                                                                record.status === 'late' ? 'Telat' :
+                                                                    record.status === 'sick' ? 'Sakit' :
+                                                                        record.status === 'permission' ? 'Izin' :
+                                                                            record.status === 'absent' ? 'Alpha' : record.status}
+                                                        </span>
+                                                        {record.status === 'late' && (record as any).lateReason && (
+                                                            <span className="text-[9px] text-red-700 font-bold bg-red-50 px-1.5 py-0.5 rounded border border-red-100 max-w-[100px] truncate" title={(record as any).lateReason}>
+                                                                {(record as any).lateReason}
+                                                            </span>
+                                                        )}
+                                                        {(record.status === 'sick' || record.status === 'permission') && record.notes && (
+                                                            <span className="text-[9px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 max-w-[100px] truncate" title={record.notes}>
+                                                                {record.notes.replace(/\[DURATION:\d+\]\s*/, '')}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500 italic max-w-[150px] truncate" title={record.notes || (record as any).lateReason || "-"}>
                                                     {record.notes ? record.notes : ((record as any).lateReason ? `Telat: ${(record as any).lateReason}` : "-")}
