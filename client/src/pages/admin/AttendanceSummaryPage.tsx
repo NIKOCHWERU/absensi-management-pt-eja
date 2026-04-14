@@ -317,7 +317,7 @@ export default function AttendanceSummaryPage() {
                                             </td>
                                             <td style="padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 8px; color: #475569; line-height: 1.2;">
                                                 ${r.status === 'late' && (r as any).lateReason ? (r as any).lateReason : ''}
-                                                ${r.status === 'permission' && r.notes ? r.notes.replace(/\[DURATION:\d+\]\s*/, '') : ''}
+                                                ${r.status === 'permission' && r.notes ? (r.notes as string).replace(/\[DURATION:\d+\]\s*/, '') : ''}
                                             </td>
                                         </tr>
                                     `;
